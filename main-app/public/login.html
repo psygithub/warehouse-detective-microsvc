@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 仓库库存检测系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+        .login-container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        .card-header {
+            background: transparent;
+            border-bottom: none;
+            text-align: center;
+            padding: 2rem 2rem 0;
+        }
+        .card-body {
+            padding: 0 2rem 2rem;
+        }
+        .form-control {
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            padding: 12px 15px;
+        }
+        .btn-primary {
+            border-radius: 10px;
+            padding: 12px;
+            font-weight: 600;
+        }
+        .logo {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="login-container">
+            <div class="card">
+                <div class="card-header">
+                    <div class="logo">
+                        <i class="fas fa-warehouse"></i>
+                    </div>
+                    <h4 class="mb-0">仓库库存检测系统</h4>
+                    <p class="text-muted mt-2">请登录您的账户</p>
+                </div>
+                <div class="card-body">
+                    <!-- 登录表单 -->
+                    <form id="loginForm">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">用户名</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-user"></i>
+                                </span>
+                                <input type="text" class="form-control" id="username" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">密码</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                <input type="password" class="form-control" id="password" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mb-3">
+                            <i class="fas fa-sign-in-alt me-2"></i>登录
+                        </button>
+                    </form>
+
+                    <!-- 注册表单 -->
+                    <form id="registerForm" style="display: none;">
+                        <div class="mb-3">
+                            <label for="regUsername" class="form-label">用户名</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-user"></i>
+                                </span>
+                                <input type="text" class="form-control" id="regUsername" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="regEmail" class="form-label">邮箱</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-envelope"></i>
+                                </span>
+                                <input type="email" class="form-control" id="regEmail" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="regPassword" class="form-label">密码</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                <input type="password" class="form-control" id="regPassword" required minlength="6">
+                            </div>
+                            <div class="form-text">密码至少6位</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="regPasswordConfirm" class="form-label">确认密码</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                <input type="password" class="form-control" id="regPasswordConfirm" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100 mb-3">
+                            <i class="fas fa-user-plus me-2"></i>注册
+                        </button>
+                    </form>
+
+                    <!-- 切换按钮 -->
+                    <div class="text-center">
+                        <button type="button" class="btn btn-link" id="toggleForm">
+                            还没有账户？点击注册
+                        </button>
+                    </div>
+
+                    <!-- 错误提示 -->
+                    <div id="errorAlert" class="alert alert-danger mt-3" style="display: none;"></div>
+                    
+                    <!-- 成功提示 -->
+                    <div id="successAlert" class="alert alert-success mt-3" style="display: none;"></div>
+
+                    <!-- 默认账户提示 -->
+                    <div class="alert alert-info mt-3" style="display: none;">
+                        <small>
+                            <strong>默认管理员账户:</strong><br>
+                            用户名: admin<br>
+                            密码: admin123
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let isLoginMode = true;
+
+        // 切换登录/注册表单
+        document.getElementById('toggleForm').addEventListener('click', function() {
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const toggleBtn = document.getElementById('toggleForm');
+            
+            if (isLoginMode) {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+                toggleBtn.textContent = '已有账户？点击登录';
+                document.querySelector('.card-header p').textContent = '创建新账户';
+                isLoginMode = false;
+            } else {
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+                toggleBtn.textContent = '还没有账户？点击注册';
+                document.querySelector('.card-header p').textContent = '请登录您的账户';
+                isLoginMode = true;
+            }
+            
+            hideAlerts();
+        });
+
+        // 登录表单提交
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    // 将 token 存入 cookie 以便进行服务器端页面保护
+                    document.cookie = `token=${data.token};path=/;max-age=86400`; // 有效期1天
+                    
+                    showSuccess('登录成功！正在跳转...');
+                    
+                    setTimeout(() => {
+                        // 根据用户角色跳转
+                        if (data.user.role === 'admin') {
+                            window.location.href = '/admin.html';
+                        } else {
+                            window.location.href = '/user.html'; 
+                        }
+                    }, 1000);
+                } else {
+                    showError(data.error);
+                }
+            } catch (error) {
+                showError('登录失败，请检查网络连接');
+            }
+        });
+
+        // 注册表单提交
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('regUsername').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const passwordConfirm = document.getElementById('regPasswordConfirm').value;
+            
+            if (password !== passwordConfirm) {
+                showError('两次输入的密码不一致');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    showSuccess('注册成功！正在跳转...');
+                    
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                } else {
+                    showError(data.error);
+                }
+            } catch (error) {
+                showError('注册失败，请检查网络连接');
+            }
+        });
+
+        // 显示错误信息
+        function showError(message) {
+            const errorAlert = document.getElementById('errorAlert');
+            errorAlert.textContent = message;
+            errorAlert.style.display = 'block';
+            document.getElementById('successAlert').style.display = 'none';
+        }
+
+        // 显示成功信息
+        function showSuccess(message) {
+            const successAlert = document.getElementById('successAlert');
+            successAlert.textContent = message;
+            successAlert.style.display = 'block';
+            document.getElementById('errorAlert').style.display = 'none';
+        }
+
+        // 隐藏所有提示
+        function hideAlerts() {
+            document.getElementById('errorAlert').style.display = 'none';
+            document.getElementById('successAlert').style.display = 'none';
+        }
+
+        // 检查是否已登录
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                // 验证token是否有效
+                fetch('/api/auth/verify', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                })
+                .then(async response => {
+                    if (response.ok) {
+                        const { user } = await response.json();
+                        // 已登录，根据角色跳转
+                        if (user.role === 'admin') {
+                            window.location.href = '/admin.html';
+                        } else {
+                            window.location.href = '/user.html';
+                        }
+                    }
+                })
+                .catch(() => {
+                    // token无效，清除本地存储
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

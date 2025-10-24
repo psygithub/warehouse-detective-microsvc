@@ -1,0 +1,51 @@
+{
+  "name": "warehouse-detective",
+  "version": "1.0.0",
+  "description": "Warehouse inventory detection using Playwright",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test/test-basic.js",
+    "start": "node src/app.js",
+    "server": "node src/app.js",
+    "dev": "node src/app.js",
+    "quick": "node scripts/quick-start.js",
+    "config": "node scripts/quick-start.js --config",
+    "help": "node scripts/quick-start.js --help",
+    "install-browsers": "playwright install",
+    "playwright-test": "playwright test",
+    "docker:build": "docker build -t warehouse-detective .",
+    "docker:run": "docker run -p 3000:3000 warehouse-detective",
+    "docker:compose": "docker-compose up -d",
+    "docker:stop": "docker-compose down"
+  },
+  "keywords": [
+    "playwright",
+    "automation",
+    "warehouse",
+    "inventory"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.12.2",
+    "bcryptjs": "^3.0.2",
+    "better-sqlite3": "^12.2.0",
+    "chartjs-adapter-date-fns": "^3.0.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.0.1",
+    "express-session": "^1.18.2",
+    "helmet": "^8.1.0",
+    "html-to-image": "^1.11.13",
+    "jsonwebtoken": "^9.0.2",
+    "lowdb": "^7.0.1",
+    "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
+    "node-fetch": "^2.7.0",
+    "nodemailer": "^7.0.5",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  }
+}

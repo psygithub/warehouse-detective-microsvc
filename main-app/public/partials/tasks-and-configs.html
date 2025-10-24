@@ -1,0 +1,78 @@
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">任务与配置</h1>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- 配置管理 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>配置管理</h3>
+                <button class="btn btn-primary btn-sm" onclick="showConfigModal()">
+                    <i class="fas fa-plus me-2"></i>新建配置
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="configsList">加载中...</div>
+            </div>
+        </div>
+
+        <!-- 定时任务 -->
+        <div class="card">
+            <div class="card-header">
+                <h3>定时任务</h3>
+                <button class="btn btn-primary btn-sm" onclick="showScheduleModal()">
+                    <i class="fas fa-plus me-2"></i>新建任务
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="schedulesList">加载中...</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <!-- 任务执行 -->
+        <div class="card">
+            <div class="card-header">
+                <h5>任务执行</h5>
+            </div>
+            <div class="card-body">
+                <form id="quickTaskForm">
+                    <div class="mb-3">
+                        <label class="form-label">SKU列表</label>
+                        <textarea class="form-control" id="taskSkus" rows="3" placeholder="每行一个SKU"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">地区列表</label>
+                        <textarea class="form-control" id="taskRegions" rows="2" placeholder="每行一个地区，留空表示所有地区"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-play me-2"></i>立即执行
+                    </button>
+                </form>
+                <hr>
+                <div class="mb-3">
+                    <label class="form-label">使用配置执行</label>
+                    <select class="form-select" id="configSelect">
+                        <option value="">选择配置...</option>
+                    </select>
+                </div>
+                <button type="button" class="btn btn-primary w-100" onclick="executeWithConfig()">
+                    <i class="fas fa-cogs me-2"></i>使用配置执行
+                </button>
+            </div>
+        </div>
+        <!-- 执行结果 -->
+        <div class="card mt-4" id="taskResultCard" style="display: none;">
+            <div class="card-header">
+                <h5>执行结果</h5>
+            </div>
+            <div class="card-body">
+                <div id="taskResult"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 模态框容器 -->
+<div id="modal-container"></div>

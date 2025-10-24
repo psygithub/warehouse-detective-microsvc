@@ -1,0 +1,196 @@
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">仪表板</h1>
+</div>
+
+<style>
+    .card-stats-compact .card-body {
+        padding: 0.8rem;
+    }
+    .card-stats-compact .card-category {
+        margin-bottom: 0.2rem;
+        font-size: 0.8rem;
+    }
+    .card-stats-compact .card-title {
+        margin-bottom: 0;
+        font-size: 1.5rem;
+    }
+    .card-stats-compact .icon i {
+        font-size: 1.8rem;
+    }
+    .table-container {
+        flex-grow: 1;
+        overflow-y: auto;
+        min-height: 0;
+    }
+    .table thead th {
+        position: sticky;
+        top: 0;
+        background-color: #f8f9fa;
+        z-index: 1;
+    }
+</style>
+
+<!-- 统计卡片 -->
+<div class="card mt-3">
+    <div class="card-header">
+        <a class="text-decoration-none" data-bs-toggle="collapse" href="#stats-collapse-area" role="button" aria-expanded="false" aria-controls="stats-collapse-area">
+            <h5><i class="fas fa-chart-bar me-2"></i>统计概览 (点击展开/折叠)</h5>
+        </a>
+    </div>
+    <div class="collapse" id="stats-collapse-area">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card card-stats-compact primary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <p class="card-category">总配置数</p>
+                                    <h3 class="card-title" id="totalConfigs">0</h3>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-cogs text-primary"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card card-stats-compact success">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <p class="card-category">活跃任务</p>
+                                    <h3 class="card-title" id="activeSchedules">0</h3>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-clock text-success"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card card-stats-compact warning">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <p class="card-category">今日执行</p>
+                                    <h3 class="card-title" id="todayResults">0</h3>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-chart-line text-warning"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card card-stats-compact danger">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <p class="card-category">总用户数</p>
+                                    <h3 class="card-title" id="totalUsers">0</h3>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-users text-danger"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 预警配置 -->
+<div class="card mt-3">
+    <div class="card-header">
+        <a class="text-decoration-none" data-bs-toggle="collapse" href="#config-collapse-area" role="button" aria-expanded="false" aria-controls="config-collapse-area">
+            <h5><i class="fas fa-cog me-2"></i>预警配置 (点击展开/折叠)</h5>
+        </a>
+    </div>
+    <div class="collapse" id="config-collapse-area">
+        <div class="card-body py-2">
+            <details>
+                <summary class="text-info" style="cursor: pointer;">点击展开/折叠规则说明</summary>
+            <div class="alert alert-info mt-2" role="alert">
+                <h6 class="alert-heading">三级预警规则说明</h6>
+                <p class="small">系统会根据您配置的参数，自动进行三级预警判断。</p>
+                <hr>
+                <p class="small mb-1"><strong>预警级别判断逻辑:</strong></p>
+                <ul class="small">
+                    <li><strong>3级 (高危)</strong>: <code>日均消耗量</code> > <code>高危日消耗量</code>。</li>
+                    <li><strong>2级 (中危)</strong>: <code>日均消耗量</code> 在区间内，且 <code>日均消耗率</code> > <code>基础消耗率阈值</code> * <code>中级预警倍数</code>。</li>
+                    <li><strong>1级 (低危)</strong>: <code>日均消耗量</code> 在区间内，且 <code>日均消耗率</code> > <code>基础消耗率阈值</code>。</li>
+                </ul>
+                <p class="small mb-0"><strong>注意:</strong> 只有当 <code>日均消耗量</code> 大于等于 <code>关注区间下限</code> 时，系统才会开始进行1级和2级的预警判断。</p>
+                <hr>
+                <p class="small mb-1"><strong>示例:</strong> 假设配置为：下限=<strong>5</strong>, 高危=<strong>20</strong>, 基础消耗率=<strong>0.03</strong>, 倍数=<strong>1.5</strong></p>
+                <ul class="small">
+                    <li>SKU A 日耗 <strong>25</strong>, 消耗率 0.04 -> <strong>3级 (高危)</strong>, 因为日耗 > 20。</li>
+                    <li>SKU B 日耗 <strong>10</strong>, 消耗率 0.05 -> <strong>2级 (中危)</strong>, 因为消耗率 > 0.03 * 1.5。</li>
+                    <li>SKU C 日耗 <strong>8</strong>, 消耗率 0.035 -> <strong>1级 (低危)</strong>, 因为消耗率 > 0.03。</li>
+                    <li>SKU D 日耗 <strong>4</strong>, 消耗率 0.10 -> <strong>无预警</strong>, 因为日耗 < 5。</li>
+                </ul>
+            </div>
+        </details>
+        <div class="row mt-2">
+            <div class="col-md-3 mb-3">
+                <label for="alert-cron-input" class="form-label">预警分析 Cron 表达式:</label>
+                <input type="text" id="alert-cron-input" class="form-control">
+            </div>
+            <div class="col-md-3 mb-3">
+                <label for="alert-timespan-input" class="form-label">分析时间窗口 (天):</label>
+                <input type="number" id="alert-timespan-input" class="form-control" value="7">
+            </div>
+            <div class="col-md-3 mb-3">
+                <label for="alert-min-daily-consumption-input" class="form-label" data-bs-toggle="tooltip" title="日均消耗量进入此范围才开始进行1级和2级预警判断">关注区间下限 (日耗):</label>
+                <input type="number" id="alert-min-daily-consumption-input" class="form-control" value="5" step="1">
+            </div>
+             <div class="col-md-3 mb-3">
+                <label for="alert-max-daily-consumption-input" class="form-label" data-bs-toggle="tooltip" title="日均消耗量超过此值将直接触发最高级预警">高危日消耗量:</label>
+                <input type="number" id="alert-max-daily-consumption-input" class="form-control" value="20" step="1">
+            </div>
+            <div class="col-md-3 mb-3">
+                <label for="alert-threshold-input" class="form-label" data-bs-toggle="tooltip" title="触发1级预警所需的基础日均消耗率">基础消耗率阈值:</label>
+                <input type="number" id="alert-threshold-input" class="form-control" value="0.03" step="0.01">
+            </div>
+            <div class="col-md-3 mb-3">
+                <label for="alert-medium-threshold-multiplier-input" class="form-label" data-bs-toggle="tooltip" title="中级预警的消耗率阈值 = 基础消耗率 * 此倍数">中级预警倍数:</label>
+                <input type="number" id="alert-medium-threshold-multiplier-input" class="form-control" value="1.5" step="0.1">
+            </div>
+        </div>
+        <button class="btn btn-success" id="save-alert-config-btn">保存预警配置</button>
+        <button class="btn btn-info" id="run-analysis-btn">立即执行一次分析</button>
+        </div>
+    </div>
+</div>
+
+<!-- 库存预警 -->
+<div class="card mt-3 d-flex flex-column" style="flex-grow: 1; min-height: 0;">
+    <div class="card-header bg-danger text-white">
+        <h5><i class="fas fa-exclamation-triangle me-2"></i>库存预警列表</h5>
+    </div>
+    <div class="card-body d-flex flex-column" style="flex-grow: 1; min-height: 0; padding: 0;">
+        <div class="table-container">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 20%;">SKU</th>
+                        <th style="width: 10%;">区域</th>
+                        <th style="width: 10%;">级别</th>
+                        <th style="width: 40%;">消耗明细</th>
+                        <th style="width: 20%;">分析日期</th>
+                    </tr>
+                </thead>
+                <tbody id="alertsList">
+                    <tr><td colspan="5" class="text-center">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div id="alerts-pagination" class="d-flex justify-content-center p-2 border-top"></div>
+    </div>
+</div>

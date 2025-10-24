@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - 仓库库存检测系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background: #343a40;
+        }
+        .sidebar .nav-link {
+            color: #adb5bd;
+            padding: 1rem;
+            border-radius: 0;
+        }
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: #fff;
+            background: #495057;
+        }
+        .main-content {
+            min-height: 100vh;
+        }
+        .card-stats {
+            border-left: 4px solid;
+        }
+        .card-stats.primary {
+            border-left-color: #007bff;
+        }
+        .card-stats.success {
+            border-left-color: #28a745;
+        }
+        .card-stats.warning {
+            border-left-color: #ffc107;
+        }
+        .card-stats.danger {
+            border-left-color: #dc3545;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边栏 -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <div class="text-center text-white mb-4">
+                        <i class="fas fa-warehouse fa-2x"></i>
+                        <h5 class="mt-2">管理后台</h5>
+                        <small id="userInfo"></small>
+                    </div>
+                    
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#" data-section="dashboard">
+                                <i class="fas fa-tachometer-alt me-2"></i>
+                                仪表板
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="tasks-and-configs">
+                                <i class="fas fa-tasks me-2"></i>
+                                任务与配置
+                            </a>
+                        </li>
+                        <li class="nav-item" style="display: none;">
+                            <a class="nav-link" href="#" data-section="results">
+                                <i class="fas fa-chart-line me-2"></i>
+                                结果查看
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="inventory-config">
+                                <i class="fas fa-box-open me-2"></i>
+                                库存跟踪配置
+                            </a>
+                        </li>
+                        <li class="nav-item" style="display: none;">
+                            <a class="nav-link" href="#" data-section="inventory-history">
+                                <i class="fas fa-chart-bar me-2"></i>
+                                库存历史图表
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-section="pivot-table">
+                                <i class="fas fa-table me-2"></i>
+                                库存数据透视
+                            </a>
+                        </li>
+                        <li class="nav-item" id="userManagementNav">
+                            <a class="nav-link" href="#" data-section="users">
+                                <i class="fas fa-users me-2"></i>
+                                用户管理
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="logout()">
+                                <i class="fas fa-sign-out-alt me-2"></i>
+                                退出登录
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- 主内容区 -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+                <!-- 仪表板 -->
+                <div id="dashboard" class="content-section active">
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">仪表板</h1>
+                    </div>
+                    
+                    <!-- 统计卡片 -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card card-stats primary">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <p class="card-category">总配置数</p>
+                                            <h3 class="card-title" id="totalConfigs">0</h3>
+                                        </div>
+                                        <div class="icon">
+                                            <i class="fas fa-cogs fa-2x text-primary"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card card-stats success">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <p class="card-category">活跃任务</p>
+                                            <h3 class="card-title" id="activeSchedules">0</h3>
+                                        </div>
+                                        <div class="icon">
+                                            <i class="fas fa-clock fa-2x text-success"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card card-stats warning">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <p class="card-category">今日执行</p>
+                                            <h3 class="card-title" id="todayResults">0</h3>
+                                        </div>
+                                        <div class="icon">
+                                            <i class="fas fa-chart-line fa-2x text-warning"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card card-stats danger">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between">
+                                        <div>
+                                            <p class="card-category">总用户数</p>
+                                            <h3 class="card-title" id="totalUsers">0</h3>
+                                        </div>
+                                        <div class="icon">
+                                            <i class="fas fa-users fa-2x text-danger"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 最近结果 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>最近检测结果</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="recentResults">加载中...</div>
+                        </div>
+                    </div>
+
+                    <!-- 库存预警 -->
+                    <div class="card mt-4">
+                        <div class="card-header bg-danger text-white">
+                            <h5><i class="fas fa-exclamation-triangle me-2"></i>库存预警</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="alertsList">加载中...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 配置管理 -->
+                <div id="configs" class="content-section">
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">配置管理</h1>
+                        <button class="btn btn-primary" onclick="showConfigModal()">
+                            <i class="fas fa-plus me-2"></i>新建配置
+                        </button>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="configsList">加载中...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 定时任务 -->
+                <div id="schedules" class="content-section">
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">定时任务</h1>
+                        <button class="btn btn-primary" onclick="showScheduleModal()">
+                            <i class="fas fa-plus me-2"></i>新建任务
+                        </button>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="schedulesList">加载中...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 任务执行 -->
+                <div id="tasks" class="content-section">
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">任务执行</h1>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>快速执行</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="quickTaskForm">
+                                        <div class="mb-3">
+                                            <label class="form-label">SKU列表</label>
+                                            <textarea class="form-control" id="taskSkus" rows="3" placeholder="每行一个SKU"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">地区列表</label>
+                                            <textarea class="form-control" id="taskRegions" rows="2" placeholder="每行一个地区，留空表示所有地区"></textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-success w-100">
+                                            <i class="fas fa-play me-2"></i>立即执行
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>使用配置执行</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">选择配置</label>
+                                        <select class="form-select" id="configSelect">
+                                            <option value="">选择配置...</option>
+                                        </select>
+                                    </div>
+                                    <button type="button" class="btn btn-primary w-100" onclick="executeWithConfig()">
+                                        <i class="fas fa-cogs me-2"></i>使用配置执行
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 执行结果 -->
+                    <div class="card mt-4" id="taskResultCard" style="display: none;">
+                        <div class="card-header">
+                            <h5>执行结果</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="taskResult"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 结果查看 -->
+                <div id="results" class="content-section">
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">结果查看</h1>
+                        <button class="btn btn-secondary" onclick="loadResults()">
+                            <i class="fas fa-refresh me-2"></i>刷新
+                        </button>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="resultsList">加载中...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 用户管理 -->
+                <div id="users" class="content-section">
+                    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                        <h1 class="h2">用户管理</h1>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="usersList">加载中...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 库存跟踪配置 -->
+                <div id="inventory-config" class="content-section"></div>
+
+                <!-- 库存历史图表 -->
+                <div id="inventory-history" class="content-section"></div>
+
+                <!-- 库存数据透视 -->
+                <div id="pivot-table" class="content-section"></div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 模态框容器 -->
+    <div id="modal-container">
+        <!-- 任务历史模态框 -->
+        <div class="modal fade" id="scheduleHistoryModal" tabindex="-1" aria-labelledby="scheduleHistoryModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="scheduleHistoryModalLabel">任务执行历史</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="scheduleHistoryBody">
+                        <!-- 历史记录将在这里加载 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="/libs/chart.umd.min.js"></script>
+    <script src="/libs/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/admin-main.js"></script>
+    <script src="/js/config-manager.js"></script>
+    <script src="/js/schedule-manager.js"></script>
+    <script src="/js/task-runner.js"></script>
+    <script src="/js/tasks-and-configs.js"></script>
+    <script src="/js/sku-manager.js"></script>
+    <script src="/js/pivot-table.js"></script>
+</body>
+</html>

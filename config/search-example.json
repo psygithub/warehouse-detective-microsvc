@@ -1,0 +1,32 @@
+{
+  "website": {
+    "loginUrl": "https://westmonth.com/",
+    "username": "18575215654",
+    "password": "容易出025@"
+  },
+  "search": {
+    "skus": [
+      "SKU001",
+      "SKU002",
+      "SKU003"
+    ],
+    "regions": [
+      "北京",
+      "上海",
+      "广州",
+      "深圳"
+    ]
+  },
+  "output": {
+    "format": "json",
+    "filename": "warehouse_results.json"
+  },
+  "browser": {
+    "headless": false,
+    "timeout": 30000,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    }
+  }
+}

@@ -1,0 +1,48 @@
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">库存历史图表</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <button type="button" class="btn btn-sm btn-outline-primary" id="manageMySkusBtn" data-bs-toggle="modal" data-bs-target="#skuManagerModal">
+            <i class="fas fa-tasks"></i> 管理我的 SKU
+        </button>
+    </div>
+</div>
+
+<style>
+    .chart-card {
+        height: 85vh;
+        display: flex;
+        flex-direction: column;
+    }
+    .chart-card .card-body {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    .chart-container {
+        position: relative;
+        flex-grow: 1;
+    }
+</style>
+
+<div class="card chart-card">
+    <div class="card-body">
+        <div class="row align-items-end mb-3">
+            <div class="col-md-6">
+                <label for="sku-select" class="form-label">选择一个 SKU 查看历史记录:</label>
+                <select id="sku-select" class="form-select"></select>
+            </div>
+            <div class="col-md-6">
+                <img id="product-image" src="" alt="商品图片" class="img-fluid" style="max-height: 100px; display: none;">
+            </div>
+        </div>
+        <div id="region-checkboxes" class="mb-3">
+            <!-- Region checkboxes will be generated here -->
+        </div>
+        <div class="chart-container">
+            <canvas id="inventory-chart"></canvas>
+        </div>
+    </div>
+</div>
+
+
+<div id="sku-manager-placeholder"></div>

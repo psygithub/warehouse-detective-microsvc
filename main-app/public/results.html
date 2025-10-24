@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>检测结果 - 仓库库存检测系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .result-card {
+            transition: transform 0.2s;
+        }
+        .result-card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+        <!-- 主要内容 -->
+    <div class="container my-5">
+        <div class="row">
+            <div class="col">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>检测结果</h2>
+                    <div>
+                        <button class="btn btn-outline-primary me-2" onclick="loadResults()">
+                            <i class="fas fa-refresh me-1"></i>刷新
+                        </button>
+                        <div class="btn-group" role="group">
+                            <input type="radio" class="btn-check" name="resultType" id="allResults" value="all" checked>
+                            <label class="btn btn-outline-secondary" for="allResults">全部结果</label>
+                            
+                            <input type="radio" class="btn-check" name="resultType" id="scheduledResults" value="scheduled">
+                            <label class="btn btn-outline-secondary" for="scheduledResults">定时任务</label>
+                            
+                            <input type="radio" class="btn-check" name="resultType" id="manualResults" value="manual">
+                            <label class="btn btn-outline-secondary" for="manualResults">手动执行</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 结果列表 -->
+                <div id="resultsContainer">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <p class="mt-2">正在加载结果...</p>
+                    </div>
+                </div>
+
+                <!-- 分页 -->
+                <nav aria-label="结果分页" id="paginationContainer" style="display: none;">
+                    <ul class="pagination justify-content-center" id="pagination">
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-warehouse me-2"></i>
+                仓库库存检测系统
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">首页</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/results">查看结果</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin">管理后台</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login">登录</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+
+
+    <!-- 页脚 -->
+    <footer class="bg-dark text-white text-center py-4">
+        <div class="container">
+            <p>&copy; 2025 仓库库存检测系统. 保留所有权利.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentPage = 1;
+        let currentType = 'all';
+        const pageSize = 10;
+
+        // 检查登录状态
+        function checkAuthStatus() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('请先登录');
+                window.location.href = '/login';
+                return false;
+            }
+            return true;
+        }
+
+        // 加载结果
+        async function loadResults(page = 1) {
+            if (!checkAuthStatus()) return;
+
+            currentPage = page;
+            const token = localStorage.getItem('token');
+            const container = document.getElementById('resultsContainer');
+
+            // 显示加载状态
+            container.innerHTML = `
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">加载中...</span>
+                    </div>
+                    <p class="mt-2">正在加载结果...</p>
+                </div>
+            `;
+
+            try {
+                let url = `/api/results?limit=${pageSize}&offset=${(page - 1) * pageSize}`;
+                if (currentType === 'scheduled') {
+                    url += '&scheduled=true';
+                } else if (currentType === 'manual') {
+                    url += '&scheduled=false';
+                }
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const results = await response.json();
+                    displayResults(results);
+                } else {
+                    throw new Error('加载失败');
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        加载结果失败: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 显示结果
+        function displayResults(results) {
+            const container = document.getElementById('resultsContainer');
+            
+            if (!results || results.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted">
+                        <i class="fas fa-search fa-3x mb-3"></i>
+                        <h5>暂无结果</h5>
+                        <p>没有找到符合条件的检测结果</p>
+                    </div>
+                `;
+                document.getElementById('paginationContainer').style.display = 'none';
+                return;
+            }
+
+            let html = '';
+            results.forEach(result => {
+                const skuCount = Array.isArray(result.skus) ? result.skus.length : 1;
+                const resultCount = Array.isArray(result.results) ? result.results.length : 0;
+                const lastUpdate = result.updatedAt || result.createdAt;
+                const isScheduled = result.isScheduled || false;
+
+                html += `
+                    <div class="card result-card mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">
+                                    <i class="fas fa-${isScheduled ? 'clock' : 'play'} me-2"></i>
+                                    ${isScheduled ? '定时任务' : '手动执行'}
+                                </h6>
+                                <small class="text-muted">执行时间: ${new Date(result.createdAt).toLocaleString()}</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-${result.status === 'completed' ? 'success' : 'warning'} me-2">
+                                    ${result.status === 'completed' ? '完成' : '进行中'}
+                                </span>
+                                <button class="btn btn-sm btn-outline-info" onclick="viewResultDetail(${result.id})">
+                                    <i class="fas fa-eye"></i> 查看详情
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h5 class="text-primary">${skuCount}</h5>
+                                        <small class="text-muted">SKU数量</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h5 class="text-success">${resultCount}</h5>
+                                        <small class="text-muted">结果数量</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="text-center">
+                                        <h6 class="text-info">${new Date(lastUpdate).toLocaleString()}</h6>
+                                        <small class="text-muted">最后更新时间</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+
+            // 显示分页（如果有足够的结果）
+            if (results.length === pageSize) {
+                document.getElementById('paginationContainer').style.display = 'block';
+                updatePagination();
+            } else {
+                document.getElementById('paginationContainer').style.display = 'none';
+            }
+        }
+
+        // 更新分页
+        function updatePagination() {
+            const pagination = document.getElementById('pagination');
+            let html = '';
+
+            // 上一页
+            html += `
+                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadResults(${currentPage - 1})">上一页</a>
+                </li>
+            `;
+
+            // 页码
+            for (let i = Math.max(1, currentPage - 2); i <= currentPage + 2; i++) {
+                html += `
+                    <li class="page-item ${i === currentPage ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="loadResults(${i})">${i}</a>
+                    </li>
+                `;
+            }
+
+            // 下一页
+            html += `
+                <li class="page-item">
+                    <a class="page-link" href="#" onclick="loadResults(${currentPage + 1})">下一页</a>
+                </li>
+            `;
+
+            pagination.innerHTML = html;
+        }
+
+        // 查看结果详情
+        async function viewResultDetail(resultId) {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            try {
+                const response = await fetch(`/api/results/${resultId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    showResultModal(result);
+                } else {
+                    alert('加载结果详情失败');
+                }
+            } catch (error) {
+                alert('加载结果详情失败: ' + error.message);
+            }
+        }
+
+        // 显示结果详情模态框
+        function showResultModal(result) {
+            const isScheduled = result.isScheduled || false;
+            let html = `
+                <div class="modal fade" id="resultDetailModal" tabindex="-1">
+                    <div class="modal-dialog modal-xl">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-${isScheduled ? 'clock' : 'play'} me-2"></i>
+                                    ${isScheduled ? '定时任务' : '手动执行'} - 结果详情
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row mb-4">
+                                    <div class="col-md-3">
+                                        <div class="card text-center">
+                                            <div class="card-body">
+                                                <h5 class="text-primary">${new Date(result.createdAt).toLocaleString()}</h5>
+                                                <small class="text-muted">执行时间</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card text-center">
+                                            <div class="card-body">
+                                                <h5 class="text-info">${new Date(result.updatedAt || result.createdAt).toLocaleString()}</h5>
+                                                <small class="text-muted">最后更新</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card text-center">
+                                            <div class="card-body">
+                                                <span class="badge bg-${result.status === 'completed' ? 'success' : 'warning'} fs-6">
+                                                    ${result.status === 'completed' ? '完成' : '进行中'}
+                                                </span>
+                                                <br><small class="text-muted">状态</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card text-center">
+                                            <div class="card-body">
+                                                <span class="badge bg-${isScheduled ? 'primary' : 'secondary'} fs-6">
+                                                    ${isScheduled ? '定时任务' : '手动执行'}
+                                                </span>
+                                                <br><small class="text-muted">类型</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+            `;
+
+            if (result.results && result.results.length > 0) {
+                html += `
+                    <h6>检测结果 (${result.results.length} 条)</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                <th>图片</th>
+                                <th>链接</th>
+                                <th>SKU</th>
+                                <th>地区</th>
+                                <th>库存</th>
+                                <th>检测时间</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                result.results.forEach(item => {
+                    html += `
+                        <tr>
+                        <td>
+                         <img src="${item.img}" alt="商品图片" style="max-width:80px;max-height:80px;">
+                        </td>                    
+                        <td>
+                            <a href="${item.url}" target="_blank" rel="noopener noreferrer">链接</a>
+                        </td>
+                        <td>${item.sku}</td>
+                        <td>${item.region}</td>
+                        <td>
+                            <span class="badge ${item.stock.includes('未找到') ? 'bg-danger' : 'bg-success'}">
+                                ${item.stock}
+                            </span>
+                        </td>
+                        <td>${new Date(item.lastUpdated).toLocaleString()}</td>
+                    </tr>
+                    `;
+                });
+
+                html += '</tbody></table></div>';
+            } else {
+                html += `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle me-2"></i>
+                        暂无检测结果数据
+                    </div>
+                `;
+            }
+
+            html += `
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // 移除已存在的模态框
+            const existingModal = document.getElementById('resultDetailModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            // 添加新模态框
+            document.body.insertAdjacentHTML('beforeend', html);
+
+            // 显示模态框
+            const modal = new bootstrap.Modal(document.getElementById('resultDetailModal'));
+            modal.show();
+        }
+
+        // 结果类型切换
+        document.querySelectorAll('input[name="resultType"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                currentType = this.value;
+                currentPage = 1;
+                loadResults();
+            });
+        });
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            if (checkAuthStatus()) {
+                loadResults();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">库存数据透视表</h1>
+</div>
+
+<style>
+    #pivot-table-head th {
+        cursor: move; /* Add move cursor to indicate draggable headers */
+    }
+    .sortable-ghost {
+        background-color: #c8ebfb; /* Style for the ghost element */
+        opacity: 0.5;
+    }
+    .table-bordered-vertical th,
+    .table-bordered-vertical td {
+        border-right: 1px solid #dee2e6; /* Add a vertical line */
+    }
+    .table-bordered-vertical th:last-child,
+    .table-bordered-vertical td:last-child {
+        border-right: none; /* Remove border from the last column */
+    }
+</style>
+
+<div class="table-responsive mt-4">
+    <table class="table table-striped table-hover table-sm table-bordered-vertical">
+        <thead id="pivot-table-head" class="table-light">
+            <!-- Dynamic columns will be generated here -->
+        </thead>
+        <tbody id="pivot-table-body">
+            <!-- Dynamic rows will be generated here -->
+        </tbody>
+    </table>
+</div>

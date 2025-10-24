@@ -1,0 +1,118 @@
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">库存跟踪配置</h1>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h4>跟踪的 SKU 列表</h4>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSkuModal">添加 SKU</button>
+            <button class="btn btn-primary" id="fetch-now-btn">立即查询</button>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive" style="overflow: auto; max-height: 600px;">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" style="position: sticky; top: 0; background: white; z-index: 1;">图片</th>
+                                        <th scope="col" style="position: sticky; top: 0; background: white; z-index: 1;">SKU</th>
+                                        <th scope="col" style="position: sticky; top: 0; background: white; z-index: 1;">最新库存</th>
+                                        <th scope="col" style="position: sticky; top: 0; background: white; z-index: 1;">月销量</th>
+                                        <th scope="col" style="position: sticky; top: 0; background: white; z-index: 1;">最后记录时间</th>
+                                        <th scope="col" style="position: sticky; top: 0; background: white; z-index: 1;">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sku-list-body">
+                                    <!-- SKU 列表将在这里动态生成 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="pagination-controls" class="d-flex justify-content-center align-items-center mt-3">
+                            <div class="d-flex align-items-center me-3">
+                                <label for="rows-per-page-select" class="form-label me-2 mb-0">每页显示:</label>
+                                <select class="form-select" id="rows-per-page-select" style="width: auto;">
+                                    <option value="20" selected>20</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
+                            <div id="pagination-links">
+                                <!-- Pagination will be rendered here by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title" id="chart-sku-name">选择一个 SKU 查看历史记录</h5>
+                        <img id="product-image" src="" alt="商品图片" class="img-fluid mb-2" style="max-height: 100px; display: none;">
+                        <div id="region-checkboxes" class="mb-3">
+                            <!-- Region checkboxes will be generated here -->
+                        </div>
+
+                        <div class="chart-container" style="height: 450px;">
+                            <canvas id="inventory-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h4>定时任务配置</h4>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <label for="cron-input" class="form-label">数据同步 Cron 表达式:</label>
+            <input type="text" id="cron-input" class="form-control">
+            <div class="form-text">
+                示例: '0 2 * * *' (每天凌晨2点), '0 */6 * * *' (每6小时)
+            </div>
+        </div>
+        <button class="btn btn-success" id="save-schedule-btn">保存定时任务</button>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <h4>定时任务执行历史</h4>
+    </div>
+    <div class="card-body">
+        <ul class="list-group" id="schedule-history-list">
+            <!-- 定时任务历史将在这里动态生成 -->
+        </ul>
+    </div>
+</div>
+
+<!-- Add SKU Modal -->
+<div class="modal fade" id="addSkuModal" tabindex="-1" aria-labelledby="addSkuModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addSkuModalLabel">批量添加 SKU</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="sku-textarea" class="form-label">输入 SKU，每行一个:</label>
+                        <textarea class="form-control" id="sku-textarea" rows="10" placeholder="SKU1&#10;SKU2&#10;SKU3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary" id="save-skus-btn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>

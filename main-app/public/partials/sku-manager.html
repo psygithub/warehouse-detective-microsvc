@@ -1,0 +1,71 @@
+<!-- SKU管理模态框 -->
+<div class="modal fade" id="skuManagerModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="skuManagerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="skuManagerModalLabel">管理用户SKU</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="skuUserId">
+                <!-- 区域1: 手动录入 -->
+                <div class="mb-3">
+                    <h6>批量查询SKU (每行一个)</h6>
+                    <textarea class="form-control" id="batchSkuQueryInput" rows="8" placeholder="SKU1&#10;SKU2&#10;SKU3"></textarea>
+                    <button class="btn btn-primary btn-sm mt-2" id="queryBatchSkuBtn">查询</button>
+                </div>
+
+                <!-- 区域2: 用户已选择的SKU -->
+                <div class="mb-3">
+                    <h6>已选择的SKU</h6>
+                    <div id="selectedSkusContainer" class="d-flex flex-wrap gap-2 border p-2 rounded" style="min-height: 50px; overflow-y: auto;">
+                        <!-- 已选择的SKU标签将在这里动态生成 -->
+                    </div>
+                </div>
+
+                <!-- 区域3: 系统中已有的SKU -->
+                <div>
+                    <h6>系统已有SKU</h6>
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th style="width: 5%;"><input type="checkbox" id="selectAllSkus"></th>
+                                    <th style="width: 15%;">图片</th>
+                                    <th style="width: 25%;">SKU</th>
+                                    <th style="width: 30%;">名称</th>
+                                    <th style="width: 25%;">有效期</th>
+                                </tr>
+                            </thead>
+                            <tbody id="systemSkusTableBody">
+                                <!-- 系统SKU将在这里动态生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <nav aria-label="SKU pagination">
+                        <ul class="pagination pagination-sm mt-2" id="skuPagination">
+                            <!-- 分页控件将在这里动态生成 -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary" id="saveUserSkusBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast 容器 -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1100">
+  <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="toast-header">
+      <strong class="me-auto" id="toastTitle">提示</strong>
+      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+    <div class="toast-body" id="toastBody">
+      ...
+    </div>
+  </div>
+</div>

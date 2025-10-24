@@ -1,0 +1,36 @@
+{
+  "website": {
+    "loginUrl": "https://westmonth.com/",
+    "username": "18575215654",
+    "password": "rych2025@",
+    "adminLoginUrl": "http://localhost:3000/login", 
+    "adminUsername": "admin",
+    "adminPassword": "admin123"
+  },
+  "search": {
+    "skus": ["HO-A05-0851-01","JAA05-A015-100-PK1"],
+    "regions": ["菲律宾"]
+  },
+  "output": {
+    "format": "json",
+    "filename": "warehouse_results.json"
+  },
+  "email": {
+    "smtpHost": "smtp.qq.com",
+    "smtpPort": 587,
+    "smtpSecure": false,
+    "smtpUser": "260946758@qq.com",
+    "smtpPass": "fugpgunzgmnabgjd",
+    "from": "260946758@qq.com",
+    "to": ["nephilo@live.cn","516000887@qq.com"]
+  },
+
+  "browser": {
+    "headless": false,
+    "timeout": 30000,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    }
+  }
+}
