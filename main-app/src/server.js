@@ -659,55 +659,56 @@ class WebServer {
     });
     router.get('/pivot-history', (req, res) => {
         try {
-            let latestHistory = database.getLatestRegionalInventoryHistory();
-            // 剔除中国地区的数据
-            latestHistory = latestHistory.filter(record => record.region_name !== '中国');
             const userSkuExpiresMap = new Map();
+            let skusForQuery = null;
+            let userSkus = [];
+
             if (req.user.role !== 'admin') {
-                const userSkus = database.getUserSkus(req.user.id, false);
-                const allowedSkuIds = new Set(userSkus.map(s => {
+                userSkus = database.getUserSkus(req.user.id, false);
+                if (userSkus.length === 0) {
+                    return res.json({ columns: [], rows: [] });
+                }
+                skusForQuery = userSkus.map(s => {
                     userSkuExpiresMap.set(s.id, s.expires_at);
                     return s.id;
-                }));
-                latestHistory = latestHistory.filter(record => allowedSkuIds.has(record.tracked_sku_id));
+                });
             }
-            if (!latestHistory || latestHistory.length === 0) {
-                return res.json({ columns: [], rows: [] });
-            }
-            const allTrackedSkus = database.getTrackedSkus();
-            const skuInfoMap = new Map(allTrackedSkus.map(s => [s.sku, {product_name: s.product_name, product_image: s.product_image, id: s.id}]));
+
+            const latestHistory = database.getLatestRegionalInventoryHistory(skusForQuery);
+            const historySkuMap = new Map(latestHistory.map(h => [h.sku, h]));
+
             const allRegions = database.getAllRegions().sort().filter(region => region !== '中国');
             const columns = ['图片', 'SKU', '商品名称', '最新日期', ...allRegions];
             if (req.user.role !== 'admin') {
                 columns.splice(3, 0, '有效日期');
             }
-            const pivotData = {};
-            latestHistory.forEach(record => {
-                const sku = record.sku;
-                if (!pivotData[sku]) {
-                    const info = skuInfoMap.get(sku) || {};
-                    pivotData[sku] = {
-                        'SKU': sku,
-                        '商品名称': info.product_name,
-                        '最新日期': record.record_date,
-                        '图片': info.product_image
-                    };
-                    if (req.user.role !== 'admin') {
-                        const expires_at = userSkuExpiresMap.get(info.id);
-                        pivotData[sku]['有效日期'] = expires_at ? expires_at.split(' ')[0] : '长期';
-                    }
+
+            const sourceSkus = req.user.role === 'admin' ? database.getTrackedSkus() : userSkus;
+
+            const rows = sourceSkus.map(skuInfo => {
+                const historyRecord = historySkuMap.get(skuInfo.sku);
+                const row = {
+                    '图片': skuInfo.product_image,
+                    'SKU': skuInfo.sku,
+                    '商品名称': skuInfo.product_name,
+                    '最新日期': historyRecord ? historyRecord.record_date : '无记录',
+                };
+
+                if (req.user.role !== 'admin') {
+                    const expires_at = userSkuExpiresMap.get(skuInfo.id);
+                    row['有效日期'] = expires_at ? expires_at.split(' ')[0] : '长期';
                 }
-                pivotData[sku][record.region_name] = record.qty;
-            });
-            const rows = Object.values(pivotData).map(skuRecord => {
-                const row = {};
-                columns.forEach(col => {
-                    row[col] = skuRecord[col] !== undefined ? skuRecord[col] : null;
+
+                allRegions.forEach(region => {
+                    row[region] = historyRecord && historyRecord.region_name === region ? historyRecord.qty : null;
                 });
+
                 return row;
             });
+
             res.json({ columns, rows });
         } catch (error) {
+            console.error('获取数据透视历史失败:', error);
             res.status(500).json({ error: '获取数据透视历史失败: ' + error.message });
         }
     });

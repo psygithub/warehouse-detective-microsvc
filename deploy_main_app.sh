@@ -57,6 +57,7 @@ docker run -d --name "$APP_CONTAINER_NAME" --network "$DOCKER_NETWORK" -p 3000:3
   -v "$SCRIPT_DIR/output:/app/output" \
   -v "$SCRIPT_DIR/config:/app/config" \
   -e "PLAYWRIGHT_SERVICE_URL=http://playwright-service:3001" \
+  -e "NODE_UNBUFFERED=1" \
   "$APP_IMAGE_NAME:latest"
 
 echo ""

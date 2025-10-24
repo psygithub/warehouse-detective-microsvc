@@ -4,7 +4,7 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 
 // 确保数据目录存在
-const dataDir = path.join(__dirname, '../data');
+const dataDir = path.join(__dirname, '../../data');
 if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
     console.log('已创建数据目录:', dataDir);
@@ -439,9 +439,24 @@ function getRegionalInventoryHistoryForSku(tracked_sku_id, days) {
     return db.prepare(`SELECT * FROM regional_inventory_history WHERE tracked_sku_id = ? AND record_date >= ? ORDER BY record_date ASC`).all(tracked_sku_id, startDate);
 }
 function getRegionalInventoryHistoryBySkuId(skuId) { return db.prepare('SELECT * FROM regional_inventory_history WHERE tracked_sku_id = ? ORDER BY record_date ASC').all(skuId); }
-function getLatestRegionalInventoryHistory() {
-    const stmt = db.prepare(`SELECT t1.* FROM regional_inventory_history t1 INNER JOIN (SELECT tracked_sku_id, MAX(record_date) AS max_date FROM regional_inventory_history GROUP BY tracked_sku_id) t2 ON t1.tracked_sku_id = t2.tracked_sku_id AND t1.record_date = t2.max_date`);
-    return stmt.all();
+function getLatestRegionalInventoryHistory(allowedSkuIds = null) {
+    let query = `
+        SELECT t1.* 
+        FROM regional_inventory_history t1 
+        INNER JOIN (
+            SELECT tracked_sku_id, MAX(record_date) AS max_date 
+            FROM regional_inventory_history 
+            GROUP BY tracked_sku_id
+        ) t2 ON t1.tracked_sku_id = t2.tracked_sku_id AND t1.record_date = t2.max_date
+    `;
+
+    if (Array.isArray(allowedSkuIds) && allowedSkuIds.length > 0) {
+        const placeholders = allowedSkuIds.map(() => '?').join(',');
+        query += ` WHERE t1.tracked_sku_id IN (${placeholders})`;
+        return db.prepare(query).all(...allowedSkuIds);
+    }
+    
+    return db.prepare(query).all();
 }
 function getAllRegions() { return db.prepare('SELECT DISTINCT region_name FROM regional_inventory_history WHERE region_name IS NOT NULL').all().map(r => r.region_name); }
 function createAlert(alertData) {
