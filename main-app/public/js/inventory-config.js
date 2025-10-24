@@ -4,11 +4,37 @@
     let existingSkus = new Set();
     let alertsBySkuId = {};
 
+    // This function will be exposed to the global scope for pagination
+    async function loadInventoryConfigSkus(page = 1) {
+        currentPage = page;
+        rowsPerPage = document.getElementById('rows-per-page-select').value;
+        const response = await apiRequest(`/api/inventory/skus-paginated?page=${page}&limit=${rowsPerPage}`);
+        if (response && response.items) {
+            existingSkus = new Set(response.items.map(s => s.sku));
+            renderSkuList(response.items);
+            window.renderPagination('pagination-links', response.total, page, rowsPerPage, 'loadInventoryConfigSkus');
+            if (response.items.length > 0) {
+                loadHistoryForSku(response.items[0].id);
+                setTimeout(() => {
+                    const firstRow = document.querySelector('#sku-list-body tr');
+                    if (firstRow) {
+                        firstRow.classList.add('table-active');
+                    }
+                }, 0);
+            } else {
+                renderChart([], '无SKU');
+            }
+        }
+    }
+
     window.sectionInitializers = window.sectionInitializers || {};
     window.sectionInitializers['inventory-config'] = async () => {
+        // Expose the pagination function to the global scope
+        window.loadInventoryConfigSkus = loadInventoryConfigSkus;
+
         const rowsPerPageSelect = document.getElementById('rows-per-page-select');
         if (rowsPerPageSelect) {
-            rowsPerPageSelect.addEventListener('change', () => loadSkus(1));
+            rowsPerPageSelect.addEventListener('change', () => loadInventoryConfigSkus(1));
         }
 
         const alerts = await apiRequest('/api/inventory/alerts/all');
@@ -20,7 +46,7 @@
             return acc;
         }, {});
 
-        await loadSkus();
+        await loadInventoryConfigSkus();
         await loadSchedule();
         await loadScheduleHistory();
 
@@ -65,7 +91,7 @@
                 if (confirm(confirmMessage)) {
                     const result = await apiRequest(`/api/inventory/skus/${id}`, 'DELETE');
                     if (result) {
-                        loadSkus(currentPage);
+                        loadInventoryConfigSkus(currentPage);
                     }
                 }
             } else if (button.classList.contains('query-btn')) {
@@ -127,7 +153,7 @@
             if (modal) {
                 modal.hide();
             }
-            await loadSkus();
+            await loadInventoryConfigSkus();
         }
     }
 
@@ -138,7 +164,7 @@
         try {
             const result = await apiRequest('/api/inventory/fetch-now', 'POST');
             alert(result.message || '查询任务已启动');
-            await loadSkus();
+            await loadInventoryConfigSkus();
             await loadScheduleHistory();
         } catch (error) {
             alert(`查询失败: ${error.message}`);
@@ -170,28 +196,6 @@
             loadSchedule();
         } catch (error) {
             alert('保存失败: ' + error.message);
-        }
-    }
-
-    async function loadSkus(page = 1) {
-        currentPage = page;
-        rowsPerPage = document.getElementById('rows-per-page-select').value;
-        const response = await apiRequest(`/api/inventory/skus-paginated?page=${page}&limit=${rowsPerPage}`);
-        if (response && response.items) {
-            existingSkus = new Set(response.items.map(s => s.sku));
-            renderSkuList(response.items);
-            window.renderPagination('pagination-links', response.total, page, rowsPerPage, loadSkus);
-            if (response.items.length > 0) {
-                loadHistoryForSku(response.items[0].id);
-                setTimeout(() => {
-                    const firstRow = document.querySelector('#sku-list-body tr');
-                    if (firstRow) {
-                        firstRow.classList.add('table-active');
-                    }
-                }, 0);
-            } else {
-                renderChart([], '无SKU');
-            }
         }
     }
 
@@ -307,7 +311,7 @@
             const result = await apiRequest(`/api/inventory/fetch-sku/${skuId}`, 'POST');
             if (result) {
                 alert(`查询成功: ${result.sku} - 库存: ${result.qty}`);
-                loadSkus(currentPage);
+                loadInventoryConfigSkus(currentPage);
             }
         } catch (error) {
             alert(`查询失败: ${error.message}`);
