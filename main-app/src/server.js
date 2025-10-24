@@ -1,3 +1,6 @@
+if (process.stdout._handle) process.stdout._handle.setBlocking(true);
+if (process.stderr._handle) process.stderr._handle.setBlocking(true);
+
 const express = require('express');
 const session = require('express-session');
 const cors = require('cors');
@@ -659,39 +662,57 @@ class WebServer {
     });
     router.get('/pivot-history', (req, res) => {
         try {
+            console.log(`[LOG] Pivot History request received for user: ${req.user.username} (ID: ${req.user.id}, Role: ${req.user.role})`);
+
+            let sourceSkus = [];
             const userSkuExpiresMap = new Map();
-            let skusForQuery = null;
-            let userSkus = [];
 
             if (req.user.role !== 'admin') {
-                userSkus = database.getUserSkus(req.user.id, false);
-                if (userSkus.length === 0) {
+                console.log(`[LOG] User is not admin. Fetching user-specific SKUs.`);
+                sourceSkus = database.getUserSkus(req.user.id, false);
+                console.log(`[LOG] Found ${sourceSkus.length} authorized SKUs for user ID ${req.user.id}.`);
+
+                if (sourceSkus.length === 0) {
+                    console.log(`[LOG] User has no authorized SKUs. Returning empty data.`);
                     return res.json({ columns: [], rows: [] });
                 }
-                skusForQuery = userSkus.map(s => {
-                    userSkuExpiresMap.set(s.id, s.expires_at);
-                    return s.id;
-                });
+                sourceSkus.forEach(s => userSkuExpiresMap.set(s.id, s.expires_at));
+            } else {
+                console.log(`[LOG] User is admin. Fetching all tracked SKUs.`);
+                sourceSkus = database.getTrackedSkus();
+                console.log(`[LOG] Found ${sourceSkus.length} total tracked SKUs.`);
             }
 
-            const latestHistory = database.getLatestRegionalInventoryHistory(skusForQuery);
-            const historySkuMap = new Map(latestHistory.map(h => [h.sku, h]));
+            const skuIds = sourceSkus.map(s => s.id);
+            console.log(`[LOG] Querying history for SKU IDs: [${skuIds.join(', ')}]`);
+            const latestHistory = database.getLatestRegionalInventoryHistory(skuIds);
+            console.log(`[LOG] Found ${latestHistory.length} latest history records for these SKUs.`);
+
+            const historyBySkuId = latestHistory.reduce((acc, record) => {
+                if (!acc[record.tracked_sku_id]) {
+                    acc[record.tracked_sku_id] = [];
+                }
+                acc[record.tracked_sku_id].push(record);
+                return acc;
+            }, {});
 
             const allRegions = database.getAllRegions().sort().filter(region => region !== '中国');
+            console.log(`[LOG] Found regions: [${allRegions.join(', ')}]`);
             const columns = ['图片', 'SKU', '商品名称', '最新日期', ...allRegions];
             if (req.user.role !== 'admin') {
                 columns.splice(3, 0, '有效日期');
             }
-
-            const sourceSkus = req.user.role === 'admin' ? database.getTrackedSkus() : userSkus;
+            console.log(`[LOG] Final columns for table: [${columns.join(', ')}]`);
 
             const rows = sourceSkus.map(skuInfo => {
-                const historyRecord = historySkuMap.get(skuInfo.sku);
+                const skuHistory = historyBySkuId[skuInfo.id] || [];
+                const latestRecord = skuHistory[0];
+
                 const row = {
                     '图片': skuInfo.product_image,
                     'SKU': skuInfo.sku,
                     '商品名称': skuInfo.product_name,
-                    '最新日期': historyRecord ? historyRecord.record_date : '无记录',
+                    '最新日期': latestRecord ? latestRecord.record_date : '无记录',
                 };
 
                 if (req.user.role !== 'admin') {
@@ -699,13 +720,16 @@ class WebServer {
                     row['有效日期'] = expires_at ? expires_at.split(' ')[0] : '长期';
                 }
 
+                const regionQtyMap = new Map(skuHistory.map(h => [h.region_name, h.qty]));
+
                 allRegions.forEach(region => {
-                    row[region] = historyRecord && historyRecord.region_name === region ? historyRecord.qty : null;
+                    row[region] = regionQtyMap.get(region) ?? null;
                 });
 
                 return row;
             });
 
+            console.log(`[LOG] Processed ${rows.length} rows of data. Sending response.`);
             res.json({ columns, rows });
         } catch (error) {
             console.error('获取数据透视历史失败:', error);

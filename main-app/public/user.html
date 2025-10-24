@@ -34,10 +34,13 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script src="/libs/chart.umd.min.js"></script>
     <script src="/libs/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script>
+        // Define token in the global scope
+        var token = null;
+    </script>
     <script src="/js/utils.js"></script>
     <script>
         let currentUser = null;
-        let token = null;
         let sessionCheckInterval = null; // 用于会话检查的定时器
 
         // 开始会话轮询检查
@@ -102,8 +105,9 @@
                 const script = document.createElement('script');
                 script.src = `/js/${section}.js`;
                 script.onload = () => {
-                    if (typeof window.initializeSection === 'function') {
-                        window.initializeSection();
+                    // Correctly call the initializer from the global registry
+                    if (window.sectionInitializers && typeof window.sectionInitializers[section] === 'function') {
+                        window.sectionInitializers[section]();
                     }
                 };
                 document.body.appendChild(script);
