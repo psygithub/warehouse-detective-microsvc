@@ -55,6 +55,10 @@
             const manageSkusBtn = user.role === 'user'
                 ? `<button class="btn btn-sm btn-outline-info manage-skus-btn" data-user-id="${user.id}" data-username="${user.username}">关联SKU</button>`
                 : '';
+            
+            const manageRegionsBtn = user.role === 'user'
+                ? `<button class="btn btn-sm btn-outline-success manage-regions-btn" data-user-id="${user.id}" data-username="${user.username}">关联区域</button>`
+                : '';
 
             const row = `
                 <tr>
@@ -67,6 +71,7 @@
                     <td>
                         <button class="btn btn-sm btn-outline-primary edit-btn" data-user-id="${user.id}">编辑</button>
                         ${manageSkusBtn}
+                        ${manageRegionsBtn}
                         <button class="btn btn-sm btn-outline-danger delete-btn" data-user-id="${user.id}" ${user.id === currentUser.id ? 'disabled' : ''}>删除</button>
                     </td>
                 </tr>
@@ -165,6 +170,12 @@
                 }
             }
 
+            if (target.classList.contains('manage-regions-btn')) {
+                const userId = target.dataset.userId;
+                const username = target.dataset.username;
+                openAssociateRegionsModal({ id: userId, username });
+            }
+
             if (target.id === 'saveUserBtn') {
                 const userId = document.getElementById('userId').value;
                 const userData = {
@@ -200,5 +211,108 @@
         });
 
         listenersInitialized = true;
+    }
+
+    async function openAssociateRegionsModal(user) {
+        const modalHtml = `
+            <div class="modal fade" id="associateRegionsModal" tabindex="-1" aria-labelledby="associateRegionsModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="associateRegionsModalLabel">为 ${user.username} 关联区域</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="newRegionName" class="form-label">添加新区域 (每行一个)</label>
+                                <div class="input-group">
+                                    <textarea class="form-control" id="newRegionName" placeholder="输入新区域名称，每行一个" rows="3"></textarea>
+                                    <button class="btn btn-outline-secondary" type="button" id="saveNewRegionBtn">保存</button>
+                                </div>
+                            </div>
+                            <hr>
+                            <h6>可选区域</h6>
+                            <div id="regionsList" class="list-group" style="max-height: 300px; overflow-y: auto;">
+                                <!-- Regions will be loaded here -->
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                            <button type="button" class="btn btn-primary" id="saveUserRegionsBtn">确认</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Remove any existing modal to avoid conflicts
+        const existingModal = document.getElementById('associateRegionsModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        const modalEl = document.getElementById('associateRegionsModal');
+        const modal = new bootstrap.Modal(modalEl);
+
+        const regionsList = document.getElementById('regionsList');
+        let allRegions = [];
+        let userRegionIds = new Set();
+
+        async function loadRegions() {
+            try {
+                const [regions, userRegions] = await Promise.all([
+                    apiRequest('/api/regions'),
+                    apiRequest(`/api/users/${user.id}/regions`)
+                ]);
+                allRegions = regions;
+                userRegionIds = new Set(userRegions.map(r => r.id));
+                renderRegions();
+            } catch (error) {
+                console.error('加载区域失败:', error);
+                regionsList.innerHTML = '<p class="text-danger">加载区域列表失败</p>';
+            }
+        }
+
+        function renderRegions() {
+            regionsList.innerHTML = allRegions.map(region => `
+                <label class="list-group-item">
+                    <input class="form-check-input me-1" type="checkbox" value="${region.id}" ${userRegionIds.has(region.id) ? 'checked' : ''}>
+                    ${region.name}
+                </label>
+            `).join('');
+        }
+
+        document.getElementById('saveNewRegionBtn').addEventListener('click', async () => {
+            const newRegionNameInput = document.getElementById('newRegionName');
+            const names = newRegionNameInput.value.trim().split('\n').map(name => name.trim()).filter(name => name);
+            if (names.length > 0) {
+                try {
+                    await apiRequest('/api/regions/bulk', 'POST', { names });
+                    newRegionNameInput.value = '';
+                    await loadRegions();
+                } catch (error) {
+                    alert('保存新区域失败: ' + error.message);
+                }
+            }
+        });
+
+        document.getElementById('saveUserRegionsBtn').addEventListener('click', async () => {
+            const selectedRegionIds = Array.from(regionsList.querySelectorAll('input:checked')).map(input => parseInt(input.value));
+            try {
+                await apiRequest(`/api/users/${user.id}/regions`, 'PUT', { regionIds: selectedRegionIds });
+                modal.hide();
+            } catch (error) {
+                alert('保存用户区域关联失败: ' + error.message);
+            }
+        });
+
+        modalEl.addEventListener('hidden.bs.modal', () => {
+            modalEl.remove();
+        });
+
+        await loadRegions();
+        modal.show();
     }
 })();

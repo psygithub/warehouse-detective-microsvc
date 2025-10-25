@@ -206,6 +206,62 @@ class WebServer {
         res.status(500).json({ error: error.message });
       }
     });
+
+    // Region routes
+    this.app.get('/api/regions', auth.authenticateToken.bind(auth), (req, res) => {
+        try {
+            const regions = database.getAllRegions();
+            res.json(regions);
+        } catch (error) {
+            res.status(500).json({ error: '获取区域列表失败: ' + error.message });
+        }
+    });
+
+    this.app.post('/api/regions', auth.authenticateToken.bind(auth), auth.requireAdmin.bind(auth), (req, res) => {
+        try {
+            const { name } = req.body;
+            if (!name) return res.status(400).json({ error: '区域名称不能为空' });
+            const newRegion = database.createRegion(name);
+            res.status(201).json(newRegion);
+        } catch (error) {
+            res.status(500).json({ error: '创建区域失败: ' + error.message });
+        }
+    });
+
+    this.app.post('/api/regions/bulk', auth.authenticateToken.bind(auth), auth.requireAdmin.bind(auth), (req, res) => {
+        try {
+            const { names } = req.body;
+            if (!Array.isArray(names) || names.length === 0) {
+                return res.status(400).json({ error: '区域名称列表不能为空' });
+            }
+            const result = database.createRegionsBulk(names);
+            res.status(201).json({ message: `成功处理 ${result.count} 个区域`, ...result });
+        } catch (error) {
+            res.status(500).json({ error: '批量创建区域失败: ' + error.message });
+        }
+    });
+
+    this.app.get('/api/users/:id/regions', auth.authenticateToken.bind(auth), auth.requireUserOrAdmin.bind(auth), (req, res) => {
+        try {
+            const userId = parseInt(req.params.id);
+            const userRegions = database.getUserRegions(userId);
+            res.json(userRegions);
+        } catch (error) {
+            res.status(500).json({ error: '获取用户区域失败: ' + error.message });
+        }
+    });
+
+    this.app.put('/api/users/:id/regions', auth.authenticateToken.bind(auth), auth.requireAdmin.bind(auth), (req, res) => {
+        try {
+            const userId = parseInt(req.params.id);
+            const { regionIds } = req.body;
+            if (!Array.isArray(regionIds)) return res.status(400).json({ error: 'regionIds 必须是一个数组' });
+            database.replaceUserRegions(userId, regionIds);
+            res.json({ message: '用户区域关联更新成功' });
+        } catch (error) {
+            res.status(500).json({ error: '更新用户区域关联失败: ' + error.message });
+        }
+    });
   }
 
   setupUserSkuRoutes() {
@@ -666,14 +722,22 @@ class WebServer {
 
             let sourceSkus = [];
             const userSkuExpiresMap = new Map();
+            let allowedRegionNames = null;
 
             if (req.user.role !== 'admin') {
-                console.log(`[LOG] User is not admin. Fetching user-specific SKUs.`);
-                sourceSkus = database.getUserSkus(req.user.id, false);
-                console.log(`[LOG] Found ${sourceSkus.length} authorized SKUs for user ID ${req.user.id}.`);
+                console.log(`[LOG] User is not admin. Fetching user-specific SKUs and regions.`);
+                const [userSkus, userRegions] = [
+                    database.getUserSkus(req.user.id, false),
+                    database.getUserRegions(req.user.id)
+                ];
+                
+                sourceSkus = userSkus;
+                allowedRegionNames = new Set(userRegions.map(r => r.name));
 
-                if (sourceSkus.length === 0) {
-                    console.log(`[LOG] User has no authorized SKUs. Returning empty data.`);
+                console.log(`[LOG] Found ${sourceSkus.length} authorized SKUs and ${allowedRegionNames.size} regions for user ID ${req.user.id}.`);
+
+                if (sourceSkus.length === 0 || allowedRegionNames.size === 0) {
+                    console.log(`[LOG] User has no authorized SKUs or regions. Returning empty data.`);
                     return res.json({ columns: [], rows: [] });
                 }
                 sourceSkus.forEach(s => userSkuExpiresMap.set(s.id, s.expires_at));
@@ -685,8 +749,14 @@ class WebServer {
 
             const skuIds = sourceSkus.map(s => s.id);
             console.log(`[LOG] Querying history for SKU IDs: [${skuIds.join(', ')}]`);
-            const latestHistory = database.getLatestRegionalInventoryHistory(skuIds);
-            console.log(`[LOG] Found ${latestHistory.length} latest history records for these SKUs.`);
+            let latestHistory = database.getLatestRegionalInventoryHistory(skuIds);
+            console.log(`[LOG] Found ${latestHistory.length} total history records for these SKUs.`);
+
+            // Filter history data on the backend if the user is not an admin
+            if (allowedRegionNames) {
+                latestHistory = latestHistory.filter(record => allowedRegionNames.has(record.region_name));
+                console.log(`[LOG] Filtered history to ${latestHistory.length} records based on user's regions.`);
+            }
 
             const historyBySkuId = latestHistory.reduce((acc, record) => {
                 if (!acc[record.tracked_sku_id]) {
@@ -696,9 +766,12 @@ class WebServer {
                 return acc;
             }, {});
 
-            const allRegions = database.getAllRegions().sort().filter(region => region !== '中国');
-            console.log(`[LOG] Found regions: [${allRegions.join(', ')}]`);
-            const columns = ['图片', 'SKU', '商品名称', '最新日期', ...allRegions];
+            const displayRegions = (allowedRegionNames ? Array.from(allowedRegionNames) : database.getAllRegions().map(r => r.name))
+                .sort()
+                .filter(region => region !== '中国');
+
+            console.log(`[LOG] Displaying regions: [${displayRegions.join(', ')}]`);
+            const columns = ['图片', 'SKU', '商品名称', '最新日期', ...displayRegions];
             if (req.user.role !== 'admin') {
                 columns.splice(3, 0, '有效日期');
             }
@@ -722,7 +795,7 @@ class WebServer {
 
                 const regionQtyMap = new Map(skuHistory.map(h => [h.region_name, h.qty]));
 
-                allRegions.forEach(region => {
+                displayRegions.forEach(region => {
                     row[region] = regionQtyMap.get(region) ?? null;
                 });
 
@@ -840,12 +913,16 @@ class WebServer {
                 console.error(`[${new Date().toLocaleString()}] Error running scheduled task ${schedule.name}:`, error);
                 details = error.message;
             } finally {
-                database.saveScheduledTaskHistory({
-                    schedule_id: schedule.id,
-                    task_name: schedule.name,
-                    run_time: startTime.toISOString(),
+                const config = schedule.configId ? database.getConfigById(schedule.configId) : {};
+                database.saveResult({
+                    userId: schedule.userId,
+                    configId: schedule.configId || null,
+                    skus: config.skus || [],
+                    regions: config.regions || [],
+                    results: details,
                     status: status,
-                    details: details
+                    isScheduled: 1,
+                    scheduleId: schedule.id
                 });
             }
         });

@@ -206,6 +206,23 @@ CREATE TABLE IF NOT EXISTS user_sku (
   FOREIGN KEY (tracked_sku_id) REFERENCES tracked_skus (id) ON DELETE CASCADE,
   UNIQUE(user_id, tracked_sku_id)
 );
+
+-- 创建区域表和用户区域关联表
+CREATE TABLE IF NOT EXISTS regions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT UNIQUE NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_region (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  region_id INTEGER NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  FOREIGN KEY (region_id) REFERENCES regions (id) ON DELETE CASCADE,
+  UNIQUE(user_id, region_id)
+);
 `);
 
 // 数据库迁移逻辑
@@ -280,6 +297,18 @@ function migrateUserSkuTable() {
     }
 }
 migrateUserSkuTable();
+
+function migrateSchedulesTable() {
+    try {
+        const columns = db.prepare(`PRAGMA table_info(schedules)`).all();
+        if (!columns.some(col => col.name === 'task_type')) {
+            db.exec(`ALTER TABLE schedules ADD COLUMN task_type TEXT DEFAULT 'fetch_inventory'`);
+        }
+    } catch (error) {
+        console.error('Failed to migrate schedules table:', error);
+    }
+}
+migrateSchedulesTable();
 
 function ensureDefaultAdmin() {
   const admin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
@@ -369,8 +398,8 @@ function getResultById(id) {
 }
 
 function saveSchedule(scheduleData) {
-  const stmt = db.prepare(`INSERT INTO schedules (name, cron, configId, userId, isActive, createdAt) VALUES (?, ?, ?, ?, ?, ?)`);
-  const info = stmt.run(scheduleData.name, scheduleData.cron, scheduleData.configId, scheduleData.userId, scheduleData.isActive ? 1 : 0, new Date().toISOString());
+  const stmt = db.prepare(`INSERT INTO schedules (name, cron, configId, userId, isActive, createdAt, task_type) VALUES (?, ?, ?, ?, ?, ?, ?)`);
+  const info = stmt.run(scheduleData.name, scheduleData.cron, scheduleData.configId, scheduleData.userId, scheduleData.isActive ? 1 : 0, new Date().toISOString(), scheduleData.task_type || 'fetch_inventory');
   return getScheduleById(info.lastInsertRowid);
 }
 function getSchedules() { return db.prepare('SELECT * FROM schedules').all(); }
@@ -378,8 +407,28 @@ function getScheduleById(id) { return db.prepare('SELECT * FROM schedules WHERE 
 function updateSchedule(id, updateData) {
   const schedule = getScheduleById(id);
   if (!schedule) return null;
-  const stmt = db.prepare(`UPDATE schedules SET name = ?, cron = ?, isActive = ? WHERE id = ?`);
-  stmt.run(updateData.name || schedule.name, updateData.cron || schedule.cron, updateData.isActive !== undefined ? (updateData.isActive ? 1 : 0) : schedule.isActive, id);
+  
+  const fields = ['name', 'cron', 'isActive', 'task_type'];
+  const updates = [];
+  const values = [];
+
+  fields.forEach(field => {
+      if (updateData[field] !== undefined) {
+          updates.push(`${field} = ?`);
+          if (field === 'isActive') {
+              values.push(updateData[field] ? 1 : 0);
+          } else {
+              values.push(updateData[field]);
+          }
+      }
+  });
+
+  if (updates.length === 0) return schedule;
+
+  values.push(id);
+  const stmt = db.prepare(`UPDATE schedules SET ${updates.join(', ')} WHERE id = ?`);
+  stmt.run(...values);
+  
   return getScheduleById(id);
 }
 function deleteSchedule(id) { return db.prepare('DELETE FROM schedules WHERE id = ?').run(id).changes > 0; }
@@ -458,7 +507,48 @@ function getLatestRegionalInventoryHistory(allowedSkuIds = null) {
     
     return db.prepare(query).all();
 }
-function getAllRegions() { return db.prepare('SELECT DISTINCT region_name FROM regional_inventory_history WHERE region_name IS NOT NULL').all().map(r => r.region_name); }
+function getAllRegionsFromHistory() { return db.prepare('SELECT DISTINCT region_name FROM regional_inventory_history WHERE region_name IS NOT NULL').all().map(r => r.region_name); }
+
+// Region management
+function getAllRegions() { return db.prepare('SELECT * FROM regions ORDER BY name').all(); }
+function createRegion(name) {
+    const stmt = db.prepare('INSERT INTO regions (name) VALUES (?)');
+    const info = stmt.run(name);
+    return { id: info.lastInsertRowid, name };
+}
+
+function createRegionsBulk(names) {
+    const stmt = db.prepare('INSERT OR IGNORE INTO regions (name) VALUES (?)');
+    const transaction = db.transaction((regionNames) => {
+        for (const name of regionNames) {
+            if (name) { // Ensure name is not empty
+                stmt.run(name);
+            }
+        }
+        return { count: regionNames.length };
+    });
+    return transaction(names);
+}
+
+function getUserRegions(userId) {
+    const stmt = db.prepare(`
+        SELECT r.id, r.name 
+        FROM regions r 
+        JOIN user_region ur ON r.id = ur.region_id 
+        WHERE ur.user_id = ?
+    `);
+    return stmt.all(userId);
+}
+function replaceUserRegions(userId, regionIds) {
+    db.transaction(() => {
+        db.prepare('DELETE FROM user_region WHERE user_id = ?').run(userId);
+        const stmt = db.prepare('INSERT OR IGNORE INTO user_region (user_id, region_id) VALUES (?, ?)');
+        for (const regionId of regionIds) {
+            stmt.run(userId, regionId);
+        }
+    })();
+}
+
 function createAlert(alertData) {
     const { tracked_sku_id, sku, region_id, region_name, alert_type, details, alert_level } = alertData;
     // First, check if an active alert of the same type, for the same sku and region already exists.
@@ -547,7 +637,9 @@ module.exports = {
   getTrackedSkus, getTrackedSkuBySku, addTrackedSku, deleteTrackedSku, getTrackedSkuById, updateTrackedSku, getTrackedSkusBySkuNames,
   getInventoryHistory, saveInventoryRecord, hasInventoryHistory, saveRegionalInventoryRecord,
   getSystemConfigs, updateSystemConfigs, getRegionalInventoryHistoryForSku, createAlert,
-  getRegionalInventoryHistoryBySkuId, getLatestRegionalInventoryHistory, getAllRegions, getActiveAlerts,
+  getRegionalInventoryHistoryBySkuId, getLatestRegionalInventoryHistory, getAllRegionsFromHistory, getActiveAlerts,
   getActiveAlertsPaginated, // 导出新函数
-  getUserSkus, replaceUserSkus
+  getUserSkus, replaceUserSkus,
+  // Region management
+  getAllRegions, createRegion, getUserRegions, replaceUserRegions, createRegionsBulk
 };
