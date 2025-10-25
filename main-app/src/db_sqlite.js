@@ -13,8 +13,8 @@ if (!fs.existsSync(dataDir)) {
 const dbPath = path.join(dataDir, 'warehouse.db');
 const db = new Database(dbPath);
 
-// 初始化表结构
-db.exec(`
+// 将所有CREATE TABLE语句移到一个变量中
+const schemaSQL = `
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT,
@@ -57,67 +57,46 @@ CREATE TABLE IF NOT EXISTS schedules (
   configId INTEGER,
   userId INTEGER,
   isActive INTEGER,
-  createdAt TEXT
+  createdAt TEXT,
+  task_type TEXT DEFAULT 'fetch_inventory'
 );
--- 创建商品信息表（单表存储所有信息）
+
 CREATE TABLE IF NOT EXISTS xizhiyue_products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    
-    -- 基础信息
     product_sku_id INTEGER UNIQUE NOT NULL,
     product_id INTEGER NOT NULL,
     product_sku TEXT NOT NULL,
     product_name TEXT NOT NULL,
     product_image TEXT,
-    
-    -- 销售信息
     month_sales INTEGER DEFAULT 0,
     product_price TEXT,
     is_hot_sale INTEGER DEFAULT 0,
     is_new INTEGER DEFAULT 0,
     is_seckill INTEGER DEFAULT 0,
     is_wish INTEGER DEFAULT 0,
-    
-    -- 库存状态（针对请求的地区）
     target_region_id INTEGER NOT NULL,
     target_region_name TEXT,
     target_region_code TEXT,
     target_quantity INTEGER DEFAULT 0,
     target_price TEXT,
     target_stock_status TEXT,
-    
-    -- 所有地区库存信息（JSON格式存储）
     all_regions_inventory TEXT,
-    
-    -- 其他信息（JSON格式存储）
-    product_certificate TEXT, -- 证书信息
-    product_categories TEXT,  -- 分类信息
-    product_attributes TEXT,  -- 属性信息
-    formatted_attributes TEXT, -- 格式化属性
-    delivery_regions TEXT,    -- 所有地区配送信息
-    
-    -- 价格信息
+    product_certificate TEXT,
+    product_categories TEXT,
+    product_attributes TEXT,
+    formatted_attributes TEXT,
+    delivery_regions TEXT,
     member_price REAL,
     price_currency TEXT,
     price_currency_symbol TEXT,
     base_price REAL,
     guide_price REAL,
     real_price TEXT,
-    
-    -- 时间信息
     product_addtime TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    
 );
--- 创建索引（移到表创建语句之外）
-CREATE INDEX IF NOT EXISTS idx_product_sku ON xizhiyue_products (product_sku);
-CREATE INDEX IF NOT EXISTS idx_sku_id ON xizhiyue_products (product_sku_id);
-CREATE INDEX IF NOT EXISTS idx_region ON xizhiyue_products (target_region_id);
-CREATE INDEX IF NOT EXISTS idx_hot_sale ON xizhiyue_products (is_hot_sale);
-CREATE INDEX IF NOT EXISTS idx_created_at ON xizhiyue_products (created_at);
 
--- 创建商品历史价格表（可选，用于跟踪价格变化）
 CREATE TABLE IF NOT EXISTS xizhiyue_price_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     product_sku_id INTEGER NOT NULL,
@@ -127,7 +106,6 @@ CREATE TABLE IF NOT EXISTS xizhiyue_price_history (
     recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- 为库存跟踪功能创建新表
 CREATE TABLE IF NOT EXISTS tracked_skus (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sku TEXT UNIQUE NOT NULL,
@@ -136,7 +114,7 @@ CREATE TABLE IF NOT EXISTS tracked_skus (
     product_id INTEGER,
     product_sku_id INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    updated_at DATETIME
 );
 
 CREATE TABLE IF NOT EXISTS inventory_history (
@@ -155,7 +133,6 @@ CREATE TABLE IF NOT EXISTS inventory_history (
     FOREIGN KEY (tracked_sku_id) REFERENCES tracked_skus (id) ON DELETE CASCADE
 );
 
--- 为精细化分析创建新的区域库存历史表
 CREATE TABLE IF NOT EXISTS regional_inventory_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     tracked_sku_id INTEGER NOT NULL,
@@ -173,41 +150,37 @@ CREATE TABLE IF NOT EXISTS regional_inventory_history (
     FOREIGN KEY (tracked_sku_id) REFERENCES tracked_skus (id) ON DELETE CASCADE
 );
 
--- 创建产品预警表
 CREATE TABLE IF NOT EXISTS product_alerts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     tracked_sku_id INTEGER NOT NULL,
     sku TEXT NOT NULL,
     region_id INTEGER NOT NULL,
     region_name TEXT,
-    alert_type TEXT NOT NULL, -- e.g., 'FAST_CONSUMPTION'
-    alert_level INTEGER DEFAULT 1, -- 1: Low, 2: Medium, 3: High
-    details TEXT, -- JSON with details like consumption rate, timespan etc.
-    status TEXT DEFAULT 'ACTIVE', -- e.g., 'ACTIVE', 'ACKNOWLEDGED', 'RESOLVED'
+    alert_type TEXT NOT NULL,
+    alert_level INTEGER DEFAULT 1,
+    details TEXT,
+    status TEXT DEFAULT 'ACTIVE',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (tracked_sku_id) REFERENCES tracked_skus (id) ON DELETE CASCADE
 );
 
--- 创建系统配置表
 CREATE TABLE IF NOT EXISTS system_configs (
     key TEXT PRIMARY KEY,
     value TEXT
 );
 
--- 创建用户SKU关联表
 CREATE TABLE IF NOT EXISTS user_sku (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   tracked_sku_id INTEGER NOT NULL,
-  expires_at DATETIME, -- NULL 表示长期有效
+  expires_at DATETIME,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
   FOREIGN KEY (tracked_sku_id) REFERENCES tracked_skus (id) ON DELETE CASCADE,
   UNIQUE(user_id, tracked_sku_id)
 );
 
--- 创建区域表和用户区域关联表
 CREATE TABLE IF NOT EXISTS regions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT UNIQUE NOT NULL,
@@ -223,92 +196,75 @@ CREATE TABLE IF NOT EXISTS user_region (
   FOREIGN KEY (region_id) REFERENCES regions (id) ON DELETE CASCADE,
   UNIQUE(user_id, region_id)
 );
+`;
+
+// 数据库自动同步逻辑
+function synchronizeTableSchema(createTableSQL) {
+    const tableNameMatch = createTableSQL.match(/CREATE TABLE IF NOT EXISTS `?(\w+)`?/);
+    if (!tableNameMatch) return;
+    const tableName = tableNameMatch[1];
+
+    try {
+        const existingColumns = db.prepare(`PRAGMA table_info(${tableName})`).all().map(c => c.name);
+        
+        const columnsContentMatch = createTableSQL.match(/\(([\s\S]*)\)/);
+        if (!columnsContentMatch) return;
+
+        const columnsContent = columnsContentMatch[1];
+        const columnDefs = columnsContent.split(',\n').map(line => line.trim()).filter(line => line);
+
+        columnDefs.forEach(line => {
+            const upperLine = line.toUpperCase();
+            if (upperLine.startsWith('PRIMARY KEY') || upperLine.startsWith('FOREIGN KEY') || upperLine.startsWith('UNIQUE') || upperLine.startsWith('CONSTRAINT') || upperLine.startsWith('CHECK')) {
+                return;
+            }
+
+            const parts = line.split(/\s+/);
+            const columnName = parts[0].replace(/`/g, '');
+
+            if (!existingColumns.includes(columnName)) {
+                console.log(`同步数据库: 在表 '${tableName}' 中添加缺失的列 '${columnName}'...`);
+                try {
+                    db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${line}`);
+                } catch (alterError) {
+                    console.error(`无法为表 '${tableName}' 添加列 '${columnName}':`, alterError.message);
+                }
+            }
+        });
+    } catch (error) {
+        if (!error.message.includes('no such table')) {
+            console.error(`同步表 '${tableName}' 时出错:`, error.message);
+        }
+    }
+}
+
+function synchronizeAllTables(schemaSQL) {
+    console.log('开始同步数据库结构...');
+    // 首先，执行所有CREATE TABLE IF NOT EXISTS语句，确保所有表都存在
+    db.exec(schemaSQL);
+
+    // 然后，为每个表同步其结构
+    const createStatements = schemaSQL.split(/CREATE TABLE/i);
+    createStatements.forEach(stmt => {
+        if (stmt.trim().length > 0) {
+            const fullStatement = "CREATE TABLE" + stmt;
+            synchronizeTableSchema(fullStatement);
+        }
+    });
+    console.log('数据库结构同步完成。');
+}
+
+// 在应用启动时运行同步
+synchronizeAllTables(schemaSQL);
+
+// 创建索引
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_product_sku ON xizhiyue_products (product_sku);
+CREATE INDEX IF NOT EXISTS idx_sku_id ON xizhiyue_products (product_sku_id);
+CREATE INDEX IF NOT EXISTS idx_region ON xizhiyue_products (target_region_id);
+CREATE INDEX IF NOT EXISTS idx_hot_sale ON xizhiyue_products (is_hot_sale);
+CREATE INDEX IF NOT EXISTS idx_created_at ON xizhiyue_products (created_at);
 `);
-
-// 数据库迁移逻辑
-function runMigrations() {
-    try {
-        const regionalColumns = db.prepare('PRAGMA table_info(regional_inventory_history)').all();
-        if (!regionalColumns.some(c => c.name === 'product_sku_id')) {
-            db.exec('ALTER TABLE regional_inventory_history ADD COLUMN product_sku_id INTEGER');
-        }
-        if (!regionalColumns.some(c => c.name === 'product_id')) {
-            db.exec('ALTER TABLE regional_inventory_history ADD COLUMN product_id INTEGER');
-        }
-    } catch (err) {
-        if (!err.message.includes('no such table: regional_inventory_history')) {
-            console.error('Error migrating regional_inventory_history:', err);
-        }
-    }
-    try {
-        const columns = db.prepare(`PRAGMA table_info(inventory_history)`).all();
-        if (!columns.some(col => col.name === 'month_sale')) {
-            db.exec(`
-                ALTER TABLE inventory_history ADD COLUMN month_sale INTEGER;
-                ALTER TABLE inventory_history ADD COLUMN product_sales INTEGER;
-            `);
-        }
-        if (!columns.some(col => col.name === 'sku')) {
-            db.exec('ALTER TABLE inventory_history ADD COLUMN sku TEXT');
-        }
-    } catch (error) {
-        if (!error.message.includes('no such table: inventory_history')) {
-            console.error('Migration failed:', error);
-        }
-    }
-    try {
-        const columns = db.prepare('PRAGMA table_info(tracked_skus)').all();
-        if (!columns.some(c => c.name === 'product_image')) {
-            db.exec('ALTER TABLE tracked_skus ADD COLUMN product_image TEXT');
-        }
-        if (!columns.some(c => c.name === 'updated_at')) {
-            db.exec('ALTER TABLE tracked_skus ADD COLUMN updated_at DATETIME');
-        }
-    } catch (err) {
-        if (!err.message.includes('no such table: tracked_skus')) {
-            console.error('Error migrating tracked_skus:', err);
-        }
-    }
-}
-runMigrations();
-
-function migrateUsersTable() {
-    try {
-        const columns = db.prepare(`PRAGMA table_info(users)`).all();
-        if (!columns.some(col => col.name === 'session_id')) {
-            db.exec(`ALTER TABLE users ADD COLUMN session_id TEXT`);
-        }
-    } catch (error) {
-        console.error('Failed to migrate users table:', error);
-    }
-}
-migrateUsersTable();
-
-function migrateUserSkuTable() {
-    try {
-        const columns = db.prepare(`PRAGMA table_info(user_sku)`).all();
-        if (!columns.some(col => col.name === 'expires_at')) {
-            db.exec(`ALTER TABLE user_sku ADD COLUMN expires_at DATETIME`);
-        }
-    } catch (error) {
-        if (!error.message.includes('no such table: user_sku')) {
-            console.error('Failed to migrate user_sku table:', error);
-        }
-    }
-}
-migrateUserSkuTable();
-
-function migrateSchedulesTable() {
-    try {
-        const columns = db.prepare(`PRAGMA table_info(schedules)`).all();
-        if (!columns.some(col => col.name === 'task_type')) {
-            db.exec(`ALTER TABLE schedules ADD COLUMN task_type TEXT DEFAULT 'fetch_inventory'`);
-        }
-    } catch (error) {
-        console.error('Failed to migrate schedules table:', error);
-    }
-}
-migrateSchedulesTable();
 
 function ensureDefaultAdmin() {
   const admin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
