@@ -43,14 +43,15 @@
 
 <div class="d-flex justify-content-center align-items-center mt-3">
     <div class="me-3">
-        <select id="pivot-rows-per-page-select" class="form-select form-select-sm" style="width: auto;">
+        <label for="pivot-rows-per-page-select" class="form-label me-2 mb-0 d-inline-block">每页显示:</label>
+        <select class="form-select form-select-sm d-inline-block" id="pivot-rows-per-page-select" style="width: auto;">
             <option value="20" selected>20</option>
             <option value="50">50</option>
             <option value="100">100</option>
         </select>
     </div>
     <nav>
-        <ul class="pagination mb-0" id="pivot-pagination-links">
+        <ul class="pagination pagination-sm mb-0" id="pivot-pagination-links">
             <!-- Pagination links will be generated here -->
         </ul>
     </nav>
