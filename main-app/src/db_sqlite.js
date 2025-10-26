@@ -404,7 +404,19 @@ function getTrackedSkus() {
     return stmt.all();
 }
 function getTrackedSkuBySku(sku) { return db.prepare('SELECT * FROM tracked_skus WHERE sku = ?').get(sku); }
-function getTrackedSkuById(id) { return db.prepare('SELECT * FROM tracked_skus WHERE id = ?').get(id); }
+function getTrackedSkuById(id) {
+    const stmt = db.prepare(`
+        SELECT 
+            ts.id, ts.sku, ts.product_name, ts.product_image, ts.product_id, ts.product_sku_id, 
+            ts.created_at, ts.updated_at, 
+            (SELECT qty FROM inventory_history WHERE tracked_sku_id = ts.id ORDER BY record_date DESC, created_at DESC LIMIT 1) as latest_qty,
+            (SELECT month_sale FROM inventory_history WHERE tracked_sku_id = ts.id ORDER BY record_date DESC, created_at DESC LIMIT 1) as latest_month_sale,
+            (SELECT created_at FROM inventory_history WHERE tracked_sku_id = ts.id ORDER BY record_date DESC, created_at DESC LIMIT 1) as latest_record_time 
+        FROM tracked_skus ts 
+        WHERE ts.id = ?
+    `);
+    return stmt.get(id);
+}
 function updateTrackedSku(id, data) {
     const fields = Object.keys(data);
     const setClause = fields.map(field => `${field} = ?`).join(', ');
@@ -418,6 +430,18 @@ function addTrackedSku(skuData) {
     stmt.run(sku, product_name, product_id, product_sku_id, product_image);
     return getTrackedSkuBySku(sku);
 }
+
+function addTrackedSkusBulk(skusData) {
+    const stmt = db.prepare(`INSERT INTO tracked_skus (sku, product_name, product_id, product_sku_id, product_image) VALUES (@sku, @product_name, @product_id, @product_sku_id, @product_image) ON CONFLICT(sku) DO UPDATE SET product_name = excluded.product_name, product_id = excluded.product_id, product_sku_id = excluded.product_sku_id, product_image = excluded.product_image, updated_at = CURRENT_TIMESTAMP`);
+    const transaction = db.transaction((skus) => {
+        for (const sku of skus) {
+            stmt.run(sku);
+        }
+        return { count: skus.length };
+    });
+    return transaction(skusData);
+}
+
 function deleteTrackedSku(id) { return db.prepare('DELETE FROM tracked_skus WHERE id = ?').run(id).changes > 0; }
 
 function getInventoryHistory(tracked_sku_id) { return db.prepare(`SELECT * FROM inventory_history WHERE tracked_sku_id = ? ORDER BY record_date ASC`).all(tracked_sku_id); }
@@ -590,7 +614,7 @@ module.exports = {
   saveResult, getResults, getResultById, getScheduledTaskHistory,
   saveSchedule, getSchedules, getScheduleById, updateSchedule, deleteSchedule,
   getXizhiyueProductBySkuId, updateXizhiyueProduct, createXizhiyueProduct,
-  getTrackedSkus, getTrackedSkuBySku, addTrackedSku, deleteTrackedSku, getTrackedSkuById, updateTrackedSku, getTrackedSkusBySkuNames,
+  getTrackedSkus, getTrackedSkuBySku, addTrackedSku, deleteTrackedSku, getTrackedSkuById, updateTrackedSku, getTrackedSkusBySkuNames, addTrackedSkusBulk,
   getInventoryHistory, saveInventoryRecord, hasInventoryHistory, saveRegionalInventoryRecord,
   getSystemConfigs, updateSystemConfigs, getRegionalInventoryHistoryForSku, createAlert,
   getRegionalInventoryHistoryBySkuId, getLatestRegionalInventoryHistory, getAllRegionsFromHistory, getActiveAlerts,

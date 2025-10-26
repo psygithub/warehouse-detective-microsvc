@@ -129,20 +129,20 @@
             return;
         }
         const uniqueSkus = [...new Set(skus)];
-        const newSkusToSubmit = uniqueSkus.filter(sku => !existingSkus.has(sku));
-        if (uniqueSkus.length > newSkusToSubmit.length) {
-            alert(`部分SKU已存在，将被跳过。`);
-        }
-        if (newSkusToSubmit.length === 0) {
-            alert('没有新的SKU需要添加。');
+        if (uniqueSkus.length === 0) {
+            alert('请输入有效的 SKU');
             return;
         }
         const saveBtn = document.getElementById('save-skus-btn');
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 正在添加...';
         try {
-            await apiRequest('/api/inventory/skus/batch', 'POST', { skus: newSkusToSubmit });
-            alert(`${newSkusToSubmit.length} 个新 SKU 添加成功!`);
+            const result = await apiRequest('/api/inventory/skus/batch', 'POST', { skus: uniqueSkus });
+            let message = result.message || `${result.newSkusCount} 个新 SKU 已成功处理。`;
+            if (result.failedCount > 0) {
+                message += `\n${result.failedCount} 个 SKU 查询失败: ${result.failedSkus.join(', ')}`;
+            }
+            alert(message);
         } catch (error) {
             alert(`添加失败: ${error.message}`);
         } finally {

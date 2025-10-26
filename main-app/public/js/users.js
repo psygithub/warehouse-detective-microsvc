@@ -142,7 +142,7 @@
                 document.getElementById('email').value = user.email;
                 document.getElementById('password').value = '';
                 document.getElementById('role').value = user.role;
-                document.getElementById('isActive').checked = user.isActive;
+                document.getElementById('isActive').checked = user.isActive === 1;
                 document.getElementById('userModalLabel').textContent = '编辑用户';
                 
                 userModal.show();

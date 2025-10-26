@@ -121,6 +121,7 @@ class WebServer {
 
   setupAuthRoutes() {
     this.app.post('/api/auth/login', async (req, res) => {
+      console.log(`[API Entry] POST /api/auth/login`);
       try {
         const { username, password } = req.body;
         if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' });
@@ -131,6 +132,7 @@ class WebServer {
       }
     });
     this.app.post('/api/auth/register', async (req, res) => {
+      console.log(`[API Entry] POST /api/auth/register`);
       try {
         const { username, email, password } = req.body;
         if (!username || !email || !password) return res.status(400).json({ error: '用户名、邮箱和密码不能为空' });
@@ -141,12 +143,19 @@ class WebServer {
         res.status(400).json({ error: error.message });
       }
     });
-    this.app.get('/api/auth/verify', auth.authenticateToken.bind(auth), (req, res) => res.json({ user: req.user }));
-    this.app.get('/api/auth/check-session', auth.authenticateToken.bind(auth), (req, res) => res.json({ isValid: true }));
+    this.app.get('/api/auth/verify', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] GET /api/auth/verify`);
+        res.json({ user: req.user })
+    });
+    this.app.get('/api/auth/check-session', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] GET /api/auth/check-session`);
+        res.json({ isValid: true })
+    });
   }
 
   setupUserRoutes() {
     this.app.get('/api/users', auth.authenticateToken.bind(auth), auth.requireAdmin.bind(auth), (req, res) => {
+      console.log(`[API Entry] GET /api/users`);
       try {
         const users = database.getAllUsers().map(u => {
           const { password, ...userWithoutPassword } = u;
@@ -158,6 +167,7 @@ class WebServer {
       }
     });
     this.app.post('/api/users', auth.authenticateToken.bind(auth), auth.requireAdmin.bind(auth), async (req, res) => {
+      console.log(`[API Entry] POST /api/users`);
       try {
         const { username, email, password } = req.body;
         if (!username || !email || !password) return res.status(400).json({ error: '用户名、邮箱和密码不能为空' });
@@ -169,6 +179,7 @@ class WebServer {
       }
     });
     this.app.get('/api/users/:id', auth.authenticateToken.bind(auth), auth.requireUserOrAdmin.bind(auth), (req, res) => {
+      console.log(`[API Entry] GET /api/users/:id`);
       try {
         const user = database.findUserById(parseInt(req.params.id));
         if (!user) return res.status(404).json({ error: '用户不存在' });
@@ -179,6 +190,7 @@ class WebServer {
       }
     });
     this.app.put('/api/users/:id', auth.authenticateToken.bind(auth), auth.requireUserOrAdmin.bind(auth), (req, res) => {
+      console.log(`[API Entry] PUT /api/users/:id`);
       try {
         const userId = parseInt(req.params.id);
         const updateData = req.body;
@@ -196,6 +208,7 @@ class WebServer {
       }
     });
     this.app.delete('/api/users/:id', auth.authenticateToken.bind(auth), auth.requireAdmin.bind(auth), (req, res) => {
+      console.log(`[API Entry] DELETE /api/users/:id`);
       try {
         const userId = parseInt(req.params.id);
         if (userId === req.user.id) return res.status(400).json({ error: '不能删除自己的账户' });
@@ -209,6 +222,7 @@ class WebServer {
 
     // Region routes
     this.app.get('/api/regions', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] GET /api/regions`);
         try {
             const regions = database.getAllRegions();
             res.json(regions);
@@ -218,6 +232,7 @@ class WebServer {
     });
 
     this.app.post('/api/regions', auth.authenticateToken.bind(auth), auth.requireAdmin.bind(auth), (req, res) => {
+        console.log(`[API Entry] POST /api/regions`);
         try {
             const { name } = req.body;
             if (!name) return res.status(400).json({ error: '区域名称不能为空' });
@@ -229,6 +244,7 @@ class WebServer {
     });
 
     this.app.post('/api/regions/bulk', auth.authenticateToken.bind(auth), auth.requireAdmin.bind(auth), (req, res) => {
+        console.log(`[API Entry] POST /api/regions/bulk`);
         try {
             const { names } = req.body;
             if (!Array.isArray(names) || names.length === 0) {
@@ -242,6 +258,7 @@ class WebServer {
     });
 
     this.app.get('/api/users/:id/regions', auth.authenticateToken.bind(auth), auth.requireUserOrAdmin.bind(auth), (req, res) => {
+        console.log(`[API Entry] GET /api/users/:id/regions`);
         try {
             const userId = parseInt(req.params.id);
             const userRegions = database.getUserRegions(userId);
@@ -252,6 +269,7 @@ class WebServer {
     });
 
     this.app.put('/api/users/:id/regions', auth.authenticateToken.bind(auth), auth.requireAdmin.bind(auth), (req, res) => {
+        console.log(`[API Entry] PUT /api/users/:id/regions`);
         try {
             const userId = parseInt(req.params.id);
             const { regionIds } = req.body;
@@ -266,6 +284,7 @@ class WebServer {
 
   setupUserSkuRoutes() {
     this.app.get('/api/users/:id/skus', auth.authenticateToken.bind(auth), auth.requireUserOrAdmin.bind(auth), (req, res) => {
+      console.log(`[API Entry] GET /api/users/:id/skus`);
       try {
         const userId = parseInt(req.params.id);
         const isAdmin = req.user.role === 'admin';
@@ -276,6 +295,7 @@ class WebServer {
       }
     });
     this.app.post('/api/users/:id/skus', auth.authenticateToken.bind(auth), auth.requireAdmin.bind(auth), (req, res) => {
+      console.log(`[API Entry] POST /api/users/:id/skus`);
       try {
         const userId = parseInt(req.params.id);
         const { skus } = req.body;
@@ -287,6 +307,7 @@ class WebServer {
       }
     });
     this.app.post('/api/skus/lookup', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] POST /api/skus/lookup`);
         try {
             const { skus } = req.body;
             if (!Array.isArray(skus) || skus.length === 0) {
@@ -299,6 +320,7 @@ class WebServer {
         }
     });
     this.app.get('/api/skus', auth.authenticateToken.bind(auth), (req, res) => {
+      console.log(`[API Entry] GET /api/skus`);
       try {
         const allSkus = database.getTrackedSkus();
         const { page = 1, limit = 20, search = '' } = req.query;
@@ -321,6 +343,7 @@ class WebServer {
 
   setupConfigRoutes() {
     this.app.get('/api/configs', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] GET /api/configs`);
         try {
             const configs = database.getConfigs();
             res.json(configs);
@@ -329,6 +352,7 @@ class WebServer {
         }
     });
     this.app.post('/api/configs', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] POST /api/configs`);
         try {
             const configData = { ...req.body, userId: req.user.id };
             const newConfig = database.saveConfig(configData);
@@ -338,6 +362,7 @@ class WebServer {
         }
     });
     this.app.get('/api/configs/:id', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] GET /api/configs/:id`);
         try {
             const config = database.getConfigById(parseInt(req.params.id));
             if (!config) return res.status(404).json({ error: '配置不存在' });
@@ -347,6 +372,7 @@ class WebServer {
         }
     });
     this.app.put('/api/configs/:id', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] PUT /api/configs/:id`);
         try {
             const configId = parseInt(req.params.id);
             const updatedConfig = database.updateConfig(configId, req.body);
@@ -357,6 +383,7 @@ class WebServer {
         }
     });
     this.app.delete('/api/configs/:id', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] DELETE /api/configs/:id`);
         try {
             const configId = parseInt(req.params.id);
             const success = database.deleteConfig(configId);
@@ -370,6 +397,7 @@ class WebServer {
 
   setupTaskRoutes() {
     this.app.post('/api/tasks/run', auth.authenticateToken.bind(auth), async (req, res) => {
+        console.log(`[API Entry] POST /api/tasks/run`);
         try {
             if (this.isGlobalTaskRunning) {
                 return res.status(409).json({ error: '系统正在执行其他任务，请稍后再试', currentUser: this.currentTaskUser });
@@ -430,6 +458,7 @@ class WebServer {
         }
     });
     this.app.get('/api/tasks/status', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] GET /api/tasks/status`);
         res.json({
             scheduledTasks: Array.from(this.scheduledTasks.keys()),
             totalScheduled: this.scheduledTasks.size,
@@ -441,6 +470,7 @@ class WebServer {
 
   setupResultRoutes() {
     this.app.get('/api/results', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] GET /api/results`);
         try {
             const { limit = 50, offset = 0, scheduled } = req.query;
             let results = database.getResults(parseInt(limit), parseInt(offset));
@@ -455,6 +485,7 @@ class WebServer {
         }
     });
     this.app.get('/api/results/:id', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] GET /api/results/:id`);
         try {
             const result = database.getResultById(parseInt(req.params.id));
             if (!result) return res.status(404).json({ error: '结果不存在' });
@@ -467,6 +498,7 @@ class WebServer {
 
   setupScheduleRoutes() {
     this.app.post('/api/schedules', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] POST /api/schedules`);
         try {
             const { name, cron, configId, isActive = true, task_type = 'fetch_inventory' } = req.body;
             if (!cronSvc.validate(cron)) return res.status(400).json({ error: '无效的cron表达式' });
@@ -479,6 +511,7 @@ class WebServer {
         }
     });
     this.app.get('/api/schedules/:id', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] GET /api/schedules/:id`);
         try {
             const schedule = database.getScheduleById(parseInt(req.params.id));
             if (!schedule) return res.status(404).json({ error: '定时任务不存在' });
@@ -488,6 +521,7 @@ class WebServer {
         }
     });
     this.app.get('/api/schedules', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] GET /api/schedules`);
         try {
             const schedules = database.getSchedules();
             res.json(schedules);
@@ -496,6 +530,7 @@ class WebServer {
         }
     });
     this.app.put('/api/schedules/:id', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] PUT /api/schedules/:id`);
         try {
             const scheduleId = parseInt(req.params.id);
             const updateData = req.body;
@@ -510,6 +545,7 @@ class WebServer {
         }
     });
     this.app.delete('/api/schedules/:id', auth.authenticateToken.bind(auth), (req, res) => {
+        console.log(`[API Entry] DELETE /api/schedules/:id`);
         try {
             const scheduleId = parseInt(req.params.id);
             this.stopScheduledTask(scheduleId);
@@ -529,6 +565,7 @@ class WebServer {
   setupInventoryRoutes() {
     const router = express.Router();
     router.get('/skus', (req, res) => {
+        console.log(`[API Entry] GET /api/inventory/skus`);
         try {
             const skus = database.getTrackedSkus();
             res.json(skus);
@@ -537,6 +574,7 @@ class WebServer {
         }
     });
     router.get('/skus-paginated', (req, res) => {
+        console.log(`[API Entry] GET /api/inventory/skus-paginated`);
         try {
             const { page = 1, limit = 20 } = req.query;
             const allSkus = database.getTrackedSkus();
@@ -554,6 +592,7 @@ class WebServer {
         }
     });
     router.post('/skus', async (req, res) => {
+        console.log(`[API Entry] POST /api/inventory/skus`);
         const { sku } = req.body;
         if (!sku) return res.status(400).json({ error: 'SKU 不能为空' });
         try {
@@ -568,7 +607,27 @@ class WebServer {
             res.status(500).json({ error: '添加 SKU 失败: ' + error.message });
         }
     });
+
+    router.post('/skus/batch', async (req, res) => {
+        console.log(`[API Entry] POST /api/inventory/skus/batch`);
+        const { skus } = req.body;
+        if (!Array.isArray(skus) || skus.length === 0) {
+            return res.status(400).json({ error: 'SKU 列表不能为空' });
+        }
+        try {
+            const authInfo = await this.getXizhiyueAuthInfo();
+            const result = await inventoryService.addOrUpdateTrackedSkusInBatch(skus, authInfo.token);
+            res.status(201).json({
+                message: `成功添加 ${result.newSkusCount} 个新 SKU。`,
+                failedCount: result.failedSkus.length,
+                failedSkus: result.failedSkus
+            });
+        } catch (error) {
+            res.status(500).json({ error: '批量添加 SKU 失败: ' + error.message });
+        }
+    });
     router.delete('/skus/:id', (req, res) => {
+        console.log(`[API Entry] DELETE /api/inventory/skus/:id`);
         const { id } = req.params;
         try {
             const success = database.deleteTrackedSku(id);
@@ -582,6 +641,7 @@ class WebServer {
         }
     });
     router.get('/skus/:id/has-history', (req, res) => {
+        console.log(`[API Entry] GET /api/inventory/skus/:id/has-history`);
         const { id } = req.params;
         try {
             const hasHistory = database.hasInventoryHistory(id);
@@ -591,6 +651,7 @@ class WebServer {
         }
     });
     router.get('/history/:skuId', (req, res) => {
+        console.log(`[API Entry] GET /api/inventory/history/:skuId`);
         const { skuId } = req.params;
         try {
             const data = inventoryService.getInventoryHistoryBySku(skuId);
@@ -604,6 +665,7 @@ class WebServer {
         }
     });
     router.get('/regional-history/:skuId', (req, res) => {
+        console.log(`[API Entry] GET /api/inventory/regional-history/:skuId`);
         const { skuId } = req.params;
         try {
             let history = database.getRegionalInventoryHistoryBySkuId(skuId);
@@ -620,6 +682,7 @@ class WebServer {
         }
     });
     router.post('/fetch-now', async (req, res) => {
+        console.log(`[API Entry] POST /api/inventory/fetch-now`);
         try {
             const authInfo = await this.getXizhiyueAuthInfo();
             const results = await inventoryService.fetchAndSaveAllTrackedSkus(authInfo.token);
@@ -633,6 +696,7 @@ class WebServer {
     });
 
     router.post('/fetch-sku/:id', async (req, res) => {
+        console.log(`[API Entry] POST /api/inventory/fetch-sku/:id`);
         const { id } = req.params;
         try {
             const authInfo = await this.getXizhiyueAuthInfo();
@@ -647,6 +711,7 @@ class WebServer {
         }
     });
     router.get('/schedule/history', (req, res) => {
+        console.log(`[API Entry] GET /api/inventory/schedule/history`);
         try {
             const history = database.getScheduledTaskHistory();
             res.json(history);
@@ -655,6 +720,7 @@ class WebServer {
         }
     });
     router.post('/run-analysis', async (req, res) => {
+        console.log(`[API Entry] POST /api/inventory/run-analysis`);
         try {
             await analysisService.runInventoryAnalysis();
             res.json({ message: '库存分析任务已成功触发。' });
@@ -663,6 +729,7 @@ class WebServer {
         }
     });
     router.post('/run-analysis/:skuId', async (req, res) => {
+        console.log(`[API Entry] POST /api/inventory/run-analysis/:skuId`);
         try {
             const { skuId } = req.params;
             const result = await analysisService.runInventoryAnalysis(skuId);
@@ -675,6 +742,7 @@ class WebServer {
         }
     });
     router.get('/system-configs', (req, res) => {
+        console.log(`[API Entry] GET /api/inventory/system-configs`);
         try {
             const configs = database.getSystemConfigs();
             res.json(configs);
@@ -683,6 +751,7 @@ class WebServer {
         }
     });
     router.post('/system-configs', (req, res) => {
+        console.log(`[API Entry] POST /api/inventory/system-configs`);
         try {
             const { configs } = req.body;
             if (!configs || typeof configs !== 'object') {
@@ -695,6 +764,7 @@ class WebServer {
         }
     });
     router.get('/alerts', (req, res) => {
+        console.log(`[API Entry] GET /api/inventory/alerts`);
         try {
             const { page = 1, limit = 50 } = req.query;
             const paginatedAlerts = database.getActiveAlertsPaginated({
@@ -708,6 +778,7 @@ class WebServer {
     });
 
     router.get('/alerts/all', (req, res) => {
+        console.log(`[API Entry] GET /api/inventory/alerts/all`);
         try {
             // 注意：这里调用的是旧的、非分页的函数
             const alerts = database.getActiveAlerts();
@@ -717,6 +788,7 @@ class WebServer {
         }
     });
     router.get('/pivot-history', (req, res) => {
+        console.log(`[API Entry] GET /api/inventory/pivot-history`);
         try {
             console.log(`[LOG] Pivot History request received for user: ${req.user.username} (ID: ${req.user.id}, Role: ${req.user.role})`);
 
@@ -748,7 +820,8 @@ class WebServer {
             }
 
             const skuIds = sourceSkus.map(s => s.id);
-            console.log(`[LOG] Querying history for SKU IDs: [${skuIds.join(', ')}]`);
+            const skusForLog = sourceSkus.map(s => s.sku);
+            console.log(`[LOG] Querying history for SKU: [${skusForLog.join(', ')}]`);
             let latestHistory = database.getLatestRegionalInventoryHistory(skuIds);
             console.log(`[LOG] Found ${latestHistory.length} total history records for these SKUs.`);
 
@@ -810,6 +883,7 @@ class WebServer {
         }
     });
     router.get('/pivot-history/:skuId', (req, res) => {
+        console.log(`[API Entry] GET /api/inventory/pivot-history/:skuId`);
         const { skuId } = req.params;
         try {
             const history = database.getRegionalInventoryHistoryBySkuId(skuId);
