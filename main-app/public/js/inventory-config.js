@@ -47,8 +47,6 @@
         }, {});
 
         await loadInventoryConfigSkus();
-        await loadSchedule();
-        await loadScheduleHistory();
 
         const skuListBody = document.getElementById('sku-list-body');
         if (skuListBody) {
@@ -65,10 +63,7 @@
             fetchNowBtn.addEventListener('click', handleFetchNow);
         }
 
-        const saveScheduleBtn = document.getElementById('save-schedule-btn');
-        if (saveScheduleBtn) {
-            saveScheduleBtn.addEventListener('click', handleSaveSchedule);
-        }
+        
     };
 
     async function handleSkuListClick(e) {
@@ -140,7 +135,8 @@
             const result = await apiRequest('/api/inventory/skus/batch', 'POST', { skus: uniqueSkus });
             let message = result.message || `${result.newSkusCount} 个新 SKU 已成功处理。`;
             if (result.failedCount > 0) {
-                message += `\n${result.failedCount} 个 SKU 查询失败: ${result.failedSkus.join(', ')}`;
+                const failedSkusDetails = result.failedSkus.map(item => `  - ${item.sku} (${item.reason || '未知原因'})`).join('\n');
+                message += `\n\n${result.failedCount} 个 SKU 查询失败:\n${failedSkusDetails}`;
             }
             alert(message);
         } catch (error) {
@@ -171,33 +167,6 @@
         }
     }
 
-    async function handleSaveSchedule() {
-        const cronInput = document.getElementById('cron-input');
-        if (!cronInput) return;
-        const cron = cronInput.value.trim();
-        if (!cron) {
-            alert('请输入 Cron 表达式');
-            return;
-        }
-        const schedules = await apiRequest('/api/schedules');
-        const scheduleData = {
-            name: 'Default Inventory Schedule',
-            cron: cron,
-            configId: 1,
-            isActive: true
-        };
-        try {
-            if (schedules && schedules.length > 0) {
-                await apiRequest(`/api/schedules/${schedules[0].id}`, 'PUT', scheduleData);
-            } else {
-                await apiRequest('/api/schedules', 'POST', scheduleData);
-            }
-            alert('定时任务已保存');
-            loadSchedule();
-        } catch (error) {
-            alert('保存失败: ' + error.message);
-        }
-    }
 
     function renderSkuList(skus) {
         const skuListBody = document.getElementById('sku-list-body');
@@ -249,46 +218,6 @@
             }
         });
         skuListBody.innerHTML = html;
-    }
-
-    async function loadSchedule() {
-        const cronInput = document.getElementById('cron-input');
-        if (!cronInput) return;
-        const schedules = await apiRequest('/api/schedules');
-        if (schedules && schedules.length > 0) {
-            cronInput.value = schedules[0].cron;
-        } else {
-            cronInput.value = '0 2 * * *';
-        }
-    }
-
-    async function loadScheduleHistory() {
-        const history = await apiRequest('/api/inventory/schedule/history');
-        const scheduleHistoryList = document.getElementById('schedule-history-list');
-        if (!scheduleHistoryList) return;
-        scheduleHistoryList.innerHTML = '';
-        if (history && history.length > 0) {
-            history.forEach(item => {
-                const li = document.createElement('li');
-                li.className = 'list-group-item';
-                let skuArray = [];
-                if (Array.isArray(item.skus)) {
-                    skuArray = item.skus;
-                } else if (typeof item.skus === 'string') {
-                    try {
-                        skuArray = JSON.parse(item.skus);
-                    } catch (e) {
-                        skuArray = [item.skus];
-                    }
-                }
-                const skus = skuArray.join(', ');
-                const time = new Date(item.createdAt).toLocaleString();
-                li.innerHTML = `<strong>${time}:</strong> 对 ${skus} 的查询已完成，状态: ${item.status}。`;
-                scheduleHistoryList.appendChild(li);
-            });
-        } else {
-            scheduleHistoryList.innerHTML = '<li class="list-group-item">暂无定时任务执行历史。</li>';
-        }
     }
 
     async function analyzeSku(skuId, button) {

@@ -105,11 +105,12 @@
     </div>
 </div>
 
-<!-- 预警配置 -->
+
+<!-- 预警规则配置 -->
 <div class="card mt-3">
     <div class="card-header">
         <a class="text-decoration-none" data-bs-toggle="collapse" href="#config-collapse-area" role="button" aria-expanded="false" aria-controls="config-collapse-area">
-            <h5><i class="fas fa-cog me-2"></i>预警配置 (点击展开/折叠)</h5>
+            <h5><i class="fas fa-cog me-2"></i>预警规则配置 (点击展开/折叠)</h5>
         </a>
     </div>
     <div class="collapse" id="config-collapse-area">
@@ -127,21 +128,9 @@
                     <li><strong>1级 (低危)</strong>: <code>日均消耗量</code> 在区间内，且 <code>日均消耗率</code> > <code>基础消耗率阈值</code>。</li>
                 </ul>
                 <p class="small mb-0"><strong>注意:</strong> 只有当 <code>日均消耗量</code> 大于等于 <code>关注区间下限</code> 时，系统才会开始进行1级和2级的预警判断。</p>
-                <hr>
-                <p class="small mb-1"><strong>示例:</strong> 假设配置为：下限=<strong>5</strong>, 高危=<strong>20</strong>, 基础消耗率=<strong>0.03</strong>, 倍数=<strong>1.5</strong></p>
-                <ul class="small">
-                    <li>SKU A 日耗 <strong>25</strong>, 消耗率 0.04 -> <strong>3级 (高危)</strong>, 因为日耗 > 20。</li>
-                    <li>SKU B 日耗 <strong>10</strong>, 消耗率 0.05 -> <strong>2级 (中危)</strong>, 因为消耗率 > 0.03 * 1.5。</li>
-                    <li>SKU C 日耗 <strong>8</strong>, 消耗率 0.035 -> <strong>1级 (低危)</strong>, 因为消耗率 > 0.03。</li>
-                    <li>SKU D 日耗 <strong>4</strong>, 消耗率 0.10 -> <strong>无预警</strong>, 因为日耗 < 5。</li>
-                </ul>
             </div>
         </details>
         <div class="row mt-2">
-            <div class="col-md-3 mb-3">
-                <label for="alert-cron-input" class="form-label">预警分析 Cron 表达式:</label>
-                <input type="text" id="alert-cron-input" class="form-control">
-            </div>
             <div class="col-md-3 mb-3">
                 <label for="alert-timespan-input" class="form-label">分析时间窗口 (天):</label>
                 <input type="number" id="alert-timespan-input" class="form-control" value="7">
@@ -163,7 +152,7 @@
                 <input type="number" id="alert-medium-threshold-multiplier-input" class="form-control" value="1.5" step="0.1">
             </div>
         </div>
-        <button class="btn btn-success" id="save-alert-config-btn">保存预警配置</button>
+        <button class="btn btn-success" id="save-alert-config-btn">保存预警规则</button>
         <button class="btn btn-info" id="run-analysis-btn">立即执行一次分析</button>
         </div>
     </div>
@@ -175,9 +164,9 @@
         <h5><i class="fas fa-exclamation-triangle me-2"></i>库存预警列表</h5>
     </div>
     <div class="card-body d-flex flex-column" style="flex-grow: 1; min-height: 0; padding: 0;">
-        <div class="table-container">
+        <div class="table-container" style="flex-grow: 1; overflow-y: auto;">
             <table class="table table-hover table-striped mb-0">
-                <thead class="table-light">
+                <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
                     <tr>
                         <th style="width: 20%;">SKU</th>
                         <th style="width: 10%;">区域</th>
@@ -191,6 +180,20 @@
                 </tbody>
             </table>
         </div>
-        <div id="alerts-pagination" class="d-flex justify-content-center p-2 border-top"></div>
+        <div class="d-flex justify-content-center align-items-center p-2 border-top">
+            <div class="me-3">
+                <label for="alerts-rows-per-page-select" class="form-label me-2 mb-0 d-inline-block">每页显示:</label>
+                <select class="form-select form-select-sm d-inline-block" id="alerts-rows-per-page-select" style="width: auto;">
+                    <option value="20">20</option>
+                    <option value="50" selected>50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <nav>
+                <ul class="pagination mb-0" id="alerts-pagination">
+                    <!-- Pagination links will be generated here -->
+                </ul>
+            </nav>
+        </div>
     </div>
 </div>

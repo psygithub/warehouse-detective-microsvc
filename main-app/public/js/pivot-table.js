@@ -1,10 +1,29 @@
 (() => {
+    let currentPage = 1;
+    let rowsPerPage = 20;
+    let columns = [];
+    let sortState = {}; // To track sorting state { column: 'colName', order: 'asc' | 'desc' }
+    let sortableInstance = null;
+
     window.sectionInitializers = window.sectionInitializers || {};
     window.sectionInitializers['pivot-table'] = async () => {
+        window.loadPivotData = loadLatestPivotData; // Expose to global scope for pagination
+        
+        const rowsPerPageSelect = document.getElementById('pivot-rows-per-page-select');
+        if (rowsPerPageSelect) {
+            rowsPerPageSelect.addEventListener('change', () => {
+                rowsPerPage = parseInt(rowsPerPageSelect.value, 10);
+                loadLatestPivotData(1);
+            });
+        }
+        
         await loadLatestPivotData();
     };
 
-    async function loadLatestPivotData() {
+    async function loadLatestPivotData(page = 1) {
+        currentPage = page;
+        rowsPerPage = parseInt(document.getElementById('pivot-rows-per-page-select').value, 10);
+
         const tableHead = document.getElementById('pivot-table-head');
         const tableBody = document.getElementById('pivot-table-body');
 
@@ -14,21 +33,21 @@
         }
 
         tableHead.innerHTML = '<tr><th>加载中...</th></tr>';
-        tableBody.innerHTML = '';
+        tableBody.innerHTML = '<tr><td colspan="100%" class="text-center">加载中...</td></tr>';
 
         try {
-            const data = await apiRequest(`/api/inventory/pivot-history`);
+            const data = await apiRequest(`/api/inventory/pivot-history?page=${currentPage}&limit=${rowsPerPage}`);
             
-            if (!data || data.columns.length === 0) {
+            if (!data || data.rows.length === 0) {
                 tableHead.innerHTML = '<tr><th>无数据</th></tr>';
+                tableBody.innerHTML = '<tr><td colspan="100%" class="text-center">没有找到符合条件的记录。</td></tr>';
+                window.renderPagination('pivot-pagination-links', 0, currentPage, rowsPerPage, 'loadPivotData');
                 return;
             }
 
-            let columns = data.columns;
+            columns = data.columns;
             let rows = data.rows;
-            let sortableInstance = null;
-            let sortState = {}; // To track sorting state { column: 'colName', order: 'asc' | 'desc' }
-
+            
             function initSortable() {
                 if (sortableInstance) {
                     sortableInstance.destroy();
@@ -40,13 +59,13 @@
                         onEnd: function (evt) {
                             const movedItem = columns.splice(evt.oldIndex, 1)[0];
                             columns.splice(evt.newIndex, 0, movedItem);
-                            renderTable();
+                            renderTable(rows); // Re-render with new column order
                         }
                     });
                 }
             }
 
-            function renderTable() {
+            function renderTable(currentRows) {
                 // Render header
                 const nonSortableColumns = ['图片', 'SKU', '商品名称', '最新日期', '有效日期'];
                 const headerHtml = columns.map(col => {
@@ -62,7 +81,7 @@
                 tableHead.innerHTML = `<tr>${headerHtml}</tr>`;
 
                 // Render body
-                tableBody.innerHTML = rows.map(row => {
+                tableBody.innerHTML = currentRows.map(row => {
                     const cells = columns.map(col => {
                         const value = row[col];
                         if (col === '图片') {
@@ -87,18 +106,18 @@
                     const columnName = columns[index];
                     const nonSortableColumns = ['图片', 'SKU', '商品名称', '最新日期', '有效日期'];
                     if (!nonSortableColumns.includes(columnName)) {
-                        header.addEventListener('click', () => sortTable(columnName));
+                        header.addEventListener('click', () => sortTable(columnName, rows));
                         new bootstrap.Tooltip(header);
                     }
                 });
             }
 
-            function sortTable(columnName) {
+            function sortTable(columnName, currentRows) {
                 const currentSort = sortState.column === columnName && sortState.order === 'asc' ? 'desc' : 'asc';
                 
-                rows.sort((a, b) => {
-                    const valA = a[columnName] === null ? -1 : a[columnName];
-                    const valB = b[columnName] === null ? -1 : b[columnName];
+                currentRows.sort((a, b) => {
+                    const valA = a[columnName] === null ? -Infinity : a[columnName];
+                    const valB = b[columnName] === null ? -Infinity : b[columnName];
 
                     if (valA < valB) {
                         return currentSort === 'asc' ? -1 : 1;
@@ -110,10 +129,11 @@
                 });
 
                 sortState = { column: columnName, order: currentSort };
-                renderTable();
+                renderTable(currentRows);
             }
 
-            renderTable();
+            renderTable(rows);
+            window.renderPagination('pivot-pagination-links', data.total, currentPage, rowsPerPage, 'loadPivotData');
 
         } catch (error) {
             console.error('加载数据透视表失败:', error);

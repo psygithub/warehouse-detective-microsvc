@@ -277,10 +277,13 @@
 
         function renderRegions() {
             regionsList.innerHTML = allRegions.map(region => `
-                <label class="list-group-item">
-                    <input class="form-check-input me-1" type="checkbox" value="${region.id}" ${userRegionIds.has(region.id) ? 'checked' : ''}>
-                    ${region.name}
-                </label>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <label class="form-check-label flex-grow-1">
+                        <input class="form-check-input me-2" type="checkbox" value="${region.id}" ${userRegionIds.has(region.id) ? 'checked' : ''}>
+                        ${region.name}
+                    </label>
+                    <button class="btn btn-outline-danger btn-sm delete-region-btn" data-region-id="${region.id}">&times;</button>
+                </div>
             `).join('');
         }
 
@@ -294,6 +297,20 @@
                     await loadRegions();
                 } catch (error) {
                     alert('保存新区域失败: ' + error.message);
+                }
+            }
+        });
+
+        regionsList.addEventListener('click', async (event) => {
+            if (event.target.classList.contains('delete-region-btn')) {
+                const regionId = event.target.dataset.regionId;
+                if (confirm('确定要删除这个区域吗？此操作不可撤销。')) {
+                    try {
+                        await apiRequest(`/api/regions/${regionId}`, 'DELETE');
+                        await loadRegions(); // Reload regions to reflect the deletion
+                    } catch (error) {
+                        alert('删除区域失败: ' + error.message);
+                    }
                 }
             }
         });

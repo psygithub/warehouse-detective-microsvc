@@ -76,7 +76,10 @@ function getBadgeForLevel(level) {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
     paginationContainer.innerHTML = '';
 
-    if (totalPages <= 1) return;
+    if (totalPages < 1) {
+        paginationContainer.innerHTML = '<ul class="pagination pagination-sm"><li class="page-item disabled"><span class="page-link">暂无数据</span></li></ul>';
+        return;
+    }
 
     let paginationHTML = `<ul class="pagination pagination-sm">`;
 

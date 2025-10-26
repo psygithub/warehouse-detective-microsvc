@@ -510,6 +510,12 @@ function createRegionsBulk(names) {
     return transaction(names);
 }
 
+function deleteRegion(id) {
+    // This will only delete the region itself, not the associations in user_region
+    // due to how foreign keys are set up (or not set up for cascading delete on this table).
+    return db.prepare('DELETE FROM regions WHERE id = ?').run(id).changes > 0;
+}
+
 function getUserRegions(userId) {
     const stmt = db.prepare(`
         SELECT r.id, r.name 
@@ -621,5 +627,5 @@ module.exports = {
   getActiveAlertsPaginated, // 导出新函数
   getUserSkus, replaceUserSkus,
   // Region management
-  getAllRegions, createRegion, getUserRegions, replaceUserRegions, createRegionsBulk
+  getAllRegions, createRegion, getUserRegions, replaceUserRegions, createRegionsBulk, deleteRegion
 };

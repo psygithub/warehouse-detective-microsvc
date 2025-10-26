@@ -280,6 +280,20 @@ class WebServer {
             res.status(500).json({ error: '更新用户区域关联失败: ' + error.message });
         }
     });
+
+    this.app.delete('/api/regions/:id', auth.authenticateToken.bind(auth), auth.requireAdmin.bind(auth), (req, res) => {
+        console.log(`[API Entry] DELETE /api/regions/:id`);
+        try {
+            const regionId = parseInt(req.params.id);
+            const success = database.deleteRegion(regionId);
+            if (!success) {
+                return res.status(404).json({ error: '区域不存在' });
+            }
+            res.json({ message: '区域删除成功' });
+        } catch (error) {
+            res.status(500).json({ error: '删除区域失败: ' + error.message });
+        }
+    });
   }
 
   setupUserSkuRoutes() {
@@ -597,11 +611,11 @@ class WebServer {
         if (!sku) return res.status(400).json({ error: 'SKU 不能为空' });
         try {
             const authInfo = await this.getXizhiyueAuthInfo();
-            const trackedSku = await inventoryService.addOrUpdateTrackedSku(sku, authInfo.token);
-            if (trackedSku) {
-                res.status(201).json(trackedSku);
+            const result = await inventoryService.addOrUpdateTrackedSku(sku, authInfo.token);
+            if (result.success) {
+                res.status(201).json(result.data);
             } else {
-                res.status(404).json({ error: `无法找到 SKU ${sku} 的信息` });
+                res.status(404).json({ error: `无法找到 SKU ${sku} 的信息`, reason: result.reason });
             }
         } catch (error) {
             res.status(500).json({ error: '添加 SKU 失败: ' + error.message });
@@ -617,6 +631,14 @@ class WebServer {
         try {
             const authInfo = await this.getXizhiyueAuthInfo();
             const result = await inventoryService.addOrUpdateTrackedSkusInBatch(skus, authInfo.token);
+            
+            if (result.failedSkus.length > 0) {
+                const failedSkusDetails = result.failedSkus.map(item => `${item.sku} (${item.reason || '未知原因'})`).join(', ');
+                console.log(`[LOG] Batch add summary: ${result.newSkusCount} new SKUs added. ${result.failedSkus.length} SKUs failed: ${failedSkusDetails}`);
+            } else {
+                console.log(`[LOG] Batch add summary: Successfully added ${result.newSkusCount} new SKUs.`);
+            }
+
             res.status(201).json({
                 message: `成功添加 ${result.newSkusCount} 个新 SKU。`,
                 failedCount: result.failedSkus.length,
@@ -790,7 +812,11 @@ class WebServer {
     router.get('/pivot-history', (req, res) => {
         console.log(`[API Entry] GET /api/inventory/pivot-history`);
         try {
-            console.log(`[LOG] Pivot History request received for user: ${req.user.username} (ID: ${req.user.id}, Role: ${req.user.role})`);
+            const { page = 1, limit = 20 } = req.query;
+            const pageNum = parseInt(page);
+            const limitNum = parseInt(limit);
+
+            console.log(`[LOG] Pivot History request received for user: ${req.user.username} (ID: ${req.user.id}, Role: ${req.user.role}) with page: ${pageNum}, limit: ${limitNum}`);
 
             let sourceSkus = [];
             const userSkuExpiresMap = new Map();
@@ -810,7 +836,7 @@ class WebServer {
 
                 if (sourceSkus.length === 0 || allowedRegionNames.size === 0) {
                     console.log(`[LOG] User has no authorized SKUs or regions. Returning empty data.`);
-                    return res.json({ columns: [], rows: [] });
+                    return res.json({ columns: [], rows: [], total: 0, page: pageNum, limit: limitNum });
                 }
                 sourceSkus.forEach(s => userSkuExpiresMap.set(s.id, s.expires_at));
             } else {
@@ -819,13 +845,15 @@ class WebServer {
                 console.log(`[LOG] Found ${sourceSkus.length} total tracked SKUs.`);
             }
 
-            const skuIds = sourceSkus.map(s => s.id);
-            const skusForLog = sourceSkus.map(s => s.sku);
-            console.log(`[LOG] Querying history for SKU: [${skusForLog.join(', ')}]`);
+            const totalSkus = sourceSkus.length;
+            const paginatedSkus = sourceSkus.slice((pageNum - 1) * limitNum, pageNum * limitNum);
+
+            const skuIds = paginatedSkus.map(s => s.id);
+            const skusForLog = paginatedSkus.map(s => s.sku);
+            console.log(`[LOG] Querying history for SKUs on this page: [${skusForLog.join(', ')}]`);
             let latestHistory = database.getLatestRegionalInventoryHistory(skuIds);
             console.log(`[LOG] Found ${latestHistory.length} total history records for these SKUs.`);
 
-            // Filter history data on the backend if the user is not an admin
             if (allowedRegionNames) {
                 latestHistory = latestHistory.filter(record => allowedRegionNames.has(record.region_name));
                 console.log(`[LOG] Filtered history to ${latestHistory.length} records based on user's regions.`);
@@ -850,7 +878,7 @@ class WebServer {
             }
             console.log(`[LOG] Final columns for table: [${columns.join(', ')}]`);
 
-            const rows = sourceSkus.map(skuInfo => {
+            const rows = paginatedSkus.map(skuInfo => {
                 const skuHistory = historyBySkuId[skuInfo.id] || [];
                 const latestRecord = skuHistory[0];
 
@@ -875,8 +903,8 @@ class WebServer {
                 return row;
             });
 
-            console.log(`[LOG] Processed ${rows.length} rows of data. Sending response.`);
-            res.json({ columns, rows });
+            console.log(`[LOG] Processed ${rows.length} rows of data for page ${pageNum}. Sending response.`);
+            res.json({ columns, rows, total: totalSkus, page: pageNum, limit: limitNum });
         } catch (error) {
             console.error('获取数据透视历史失败:', error);
             res.status(500).json({ error: '获取数据透视历史失败: ' + error.message });

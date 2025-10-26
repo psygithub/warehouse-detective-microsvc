@@ -43,13 +43,18 @@
             display: none;
         }
         .content-section.active {
-            display: block;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        #pivot-table.content-section.active {
+            height: 100%;
         }
     </style>
 </head>
-<body>
+<body style="overflow: hidden;">
     <div class="container-fluid">
-        <div class="row">
+        <div class="row vh-100">
             <!-- 侧边栏 -->
             <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
                 <div class="position-sticky pt-3">
@@ -114,7 +119,7 @@
             </nav>
 
             <!-- 主内容区 -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content d-flex flex-column" style="overflow-y: auto; height: 100vh;">
                 <!-- 仪表板 -->
                 <div id="dashboard" class="content-section active">
                     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">

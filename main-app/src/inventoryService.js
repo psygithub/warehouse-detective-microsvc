@@ -45,14 +45,15 @@ async function fetchInventoryFromAPI(sku, token) {
         if (responseData && responseData.status === 'success' && responseData.data.data.length > 0) {
             const productData = responseData.data.data[0];
             console.log(`[LOG] Successfully fetched inventory for SKU: ${sku}. Product Name: ${productData.product_name}, Quantity: ${productData.qty}`);
-            return formatProductData(productData);
+            return { success: true, data: formatProductData(productData) };
         }
         
-        console.warn(`[LOG] API call for SKU ${sku} did not return valid data.`);
-        return null;
+        const reason = responseData.data.data.length === 0 ? 'API未返回产品信息' : 'API响应格式不正确';
+        console.warn(`[LOG] API call for SKU ${sku} did not return valid data. Reason: ${reason}`);
+        return { success: false, sku: sku, reason: reason };
     } catch (error) {
         console.error(`[LOG] Error fetching inventory for SKU ${sku}:`, error.message);
-        return null;
+        return { success: false, sku: sku, reason: error.message };
     }
 }
 
@@ -125,8 +126,9 @@ async function fetchAndSaveAllTrackedSkus(token) {
 }
 
 async function addOrUpdateTrackedSku(sku, token) {
-    const productData = await fetchInventoryFromAPI(sku, token);
-    if (productData) {
+    const result = await fetchInventoryFromAPI(sku, token);
+    if (result.success) {
+        const productData = result.data;
         const skuData = {
             sku: sku,
             product_name: productData.product_name,
@@ -135,18 +137,14 @@ async function addOrUpdateTrackedSku(sku, token) {
             product_image: productData.product_image,
         };
         
-        // 添加或更新 tracked_sku 并获取其完整对象（包括ID）
         const trackedSku = db.addTrackedSku(skuData);
         if (!trackedSku) {
-            // 如果添加失败，可能意味着数据库操作出错了
             console.error(`Failed to add or update tracked SKU for ${sku}`);
-            return null;
+            return { success: false, sku: sku, reason: '数据库操作失败' };
         }
 
-        // 为新添加的 SKU 创建初始库存记录
         const recordDate = new Date().toISOString().split('T')[0];
         
-        // 1. 保存主库存记录
         const summaryRecord = {
             tracked_sku_id: trackedSku.id,
             sku: trackedSku.sku,
@@ -160,12 +158,11 @@ async function addOrUpdateTrackedSku(sku, token) {
         };
         db.saveInventoryRecord(summaryRecord);
 
-        // 调用新的私有函数来保存区域数据
         await _saveRegionalInventoryRecords(trackedSku, productData, recordDate);
         
-        return trackedSku;
+        return { success: true, data: trackedSku };
     }
-    return null;
+    return result;
 }
 
 function getInventoryHistoryBySku(skuId) {
@@ -210,8 +207,8 @@ async function addOrUpdateTrackedSkusInBatch(skus, token) {
     const promises = newSkus.map(sku => fetchInventoryFromAPI(sku, token));
     const results = await Promise.all(promises);
 
-    const successfulFetches = results.filter(Boolean);
-    const failedSkus = skus.filter((sku, index) => !results[index]);
+    const successfulFetches = results.filter(r => r.success).map(r => r.data);
+    const failedSkus = results.filter(r => !r.success);
 
     if (successfulFetches.length > 0) {
         const skusToAdd = successfulFetches.map(productData => ({
@@ -225,7 +222,6 @@ async function addOrUpdateTrackedSkusInBatch(skus, token) {
 
         const recordDate = new Date().toISOString().split('T')[0];
         for (const productData of successfulFetches) {
-            // 注意：这里需要重新从数据库获取一次，以确保我们有 tracked_sku 的 id
             const trackedSku = db.getTrackedSkuBySku(productData.product_sku);
             if (trackedSku) {
                 const summaryRecord = {

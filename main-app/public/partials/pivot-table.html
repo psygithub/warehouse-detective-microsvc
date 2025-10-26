@@ -18,10 +18,20 @@
     .table-bordered-vertical td:last-child {
         border-right: none; /* Remove border from the last column */
     }
+    .table-container {
+        flex-grow: 1; /* Allow this container to grow and fill available space */
+        overflow: auto; /* Keep the scrollbars */
+        min-height: 0; /* Necessary for flex-grow to work in some browsers */
+    }
+    #pivot-table-head th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
 </style>
 
-<div class="table-responsive mt-4">
-    <table class="table table-striped table-hover table-sm table-bordered-vertical">
+<div class="table-container mt-2 border">
+    <table class="table table-striped table-hover table-sm table-bordered-vertical mb-0">
         <thead id="pivot-table-head" class="table-light">
             <!-- Dynamic columns will be generated here -->
         </thead>
@@ -29,4 +39,19 @@
             <!-- Dynamic rows will be generated here -->
         </tbody>
     </table>
+</div>
+
+<div class="d-flex justify-content-center align-items-center mt-3">
+    <div class="me-3">
+        <select id="pivot-rows-per-page-select" class="form-select form-select-sm" style="width: auto;">
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+        </select>
+    </div>
+    <nav>
+        <ul class="pagination mb-0" id="pivot-pagination-links">
+            <!-- Pagination links will be generated here -->
+        </ul>
+    </nav>
 </div>
