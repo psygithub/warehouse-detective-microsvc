@@ -47,6 +47,35 @@
 
             columns = data.columns;
             let rows = data.rows;
+
+            // Reorder columns: move all region columns after 'SKU'
+            if (columns.includes('SKU')) {
+                const regionCols = [];
+                const otherCols = [];
+                const knownNonRegionCols = ['图片', 'SKU', '商品名称', '最新日期', '有效日期'];
+
+                for (const col of columns) {
+                    if (knownNonRegionCols.includes(col)) {
+                        otherCols.push(col);
+                    } else {
+                        // Any column not in the known list is considered a region column
+                        regionCols.push(col);
+                    }
+                }
+
+                // Rebuild the columns array in the desired order
+                const finalCols = [];
+                if (otherCols.includes('图片')) finalCols.push('图片');
+                if (otherCols.includes('SKU')) finalCols.push('SKU');
+                
+                finalCols.push(...regionCols.sort()); // Add sorted region columns right after SKU
+                
+                if (otherCols.includes('商品名称')) finalCols.push('商品名称');
+                if (otherCols.includes('有效日期')) finalCols.push('有效日期');
+                if (otherCols.includes('最新日期')) finalCols.push('最新日期');
+                
+                columns = finalCols;
+            }
             
             function initSortable() {
                 if (sortableInstance) {
@@ -83,14 +112,24 @@
                 // Render body
                 tableBody.innerHTML = currentRows.map(row => {
                     const cells = columns.map(col => {
-                        const value = row[col];
+                        const value = row[col] !== null ? row[col] : '';
+                        let classes = '';
+                        let styles = '';
+
+                        if (col === 'SKU' || col === '商品名称') {
+                            classes += 'cell-small-font ';
+                        }
+                        if (col === 'SKU') {
+                            classes += 'text-center';
+                        }
                         if (col === '图片') {
-                            return `<td><img src="${value || ''}" alt="N/A" width="50"></td>`;
+                            styles = 'vertical-align: top;'; // Override global middle alignment
+                            return `<td style="${styles}"><img src="${value || ''}" alt="N/A" width="50" style="cursor: pointer;" onclick="showImageModal('${value || ''}')"></td>`;
                         }
                         if (value === 0) {
-                            return `<td><span class="badge bg-warning">${value}</span></td>`;
+                            return `<td class="${classes}" style="${styles}"><span class="badge bg-warning">0</span></td>`;
                         }
-                        return `<td>${value !== null ? value : ''}</td>`;
+                        return `<td class="${classes}" style="${styles}">${value}</td>`;
                     }).join('');
                     return `<tr>${cells}</tr>`;
                 }).join('');
@@ -142,4 +181,13 @@
             }
         }
     }
+
+    window.showImageModal = (src) => {
+        const modalImage = document.getElementById('modalImage');
+        if (modalImage) {
+            modalImage.src = src;
+            const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+            imageModal.show();
+        }
+    };
 })();

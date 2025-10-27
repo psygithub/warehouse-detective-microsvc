@@ -124,9 +124,23 @@ function displayAlerts(alerts) {
         }
 
         const consumptionRateText = typeof details.consumptionRate === 'number' ? `${(details.consumptionRate * 100).toFixed(2)}%` : 'N/A';
-        const dailyConsumptionText = typeof details.dailyConsumption === 'number' ? details.dailyConsumption.toFixed(4) : 'N/A';
+        const dailyConsumptionText = typeof details.dailyConsumption === 'number' ? details.dailyConsumption.toFixed(2) : 'N/A'; // 保留两位小数
         const consumptionDetail = `(${details.days}天内消耗 ${details.qtyChange}件, 日均消耗率: ${consumptionRateText})`;
         const alertId = `alert-${index}`;
+
+        const detailsParts = [];
+        detailsParts.push(`<strong>分析日期:</strong> ${new Date(alert.updated_at).toLocaleString()}`);
+        detailsParts.push(`<strong>分析周期:</strong> ${details.days} 天`);
+        detailsParts.push(`<strong>期初数量:</strong> ${details.start_qty}`);
+        detailsParts.push(`<strong>数量变化:</strong> ${details.qtyChange}`);
+        detailsParts.push(`<strong>日均消耗:</strong> ${dailyConsumptionText}`);
+        detailsParts.push(`<strong>消耗率:</strong> ${consumptionRateText}`);
+
+        const detailsHtml = `
+            <div class="alert-details-content" style="font-size: 0.85rem; white-space: nowrap; overflow-x: auto;">
+                ${detailsParts.map(part => `<span>${part}</span>`).join('&nbsp;|&nbsp;')}
+            </div>
+        `;
 
         html += `
             <tr class="${rowClass} alert-row" data-id="${alertId}" style="cursor: pointer;">
@@ -134,11 +148,11 @@ function displayAlerts(alerts) {
                 <td>${alert.region_name}</td>
                 <td>${getBadgeForLevel(alert.alert_level)}</td>
                 <td>${consumptionDetail}</td>
-                <td>${new Date(alert.created_at).toLocaleString()}</td>
+                <td>${new Date(alert.updated_at).toLocaleString()}</td>
             </tr>
             <tr class="alert-details-row d-none" data-id="${alertId}">
                 <td colspan="5" class="bg-light p-3">
-                    <!-- Detailed info here -->
+                    ${detailsHtml}
                 </td>
             </tr>
         `;

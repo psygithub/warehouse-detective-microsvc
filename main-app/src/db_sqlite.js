@@ -4,13 +4,14 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 
 // 确保数据目录存在
-const dataDir = path.join(__dirname, '../data');
+const dataDir = path.join(__dirname, '../../data');
 if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
     console.log('已创建数据目录:', dataDir);
 }
 
 const dbPath = path.join(dataDir, 'warehouse.db');
+console.log('>>>> DEBUG: 正在连接数据库:', dbPath); // 打印实际的数据库路径
 const db = new Database(dbPath);
 
 // 将所有CREATE TABLE语句移到一个变量中
@@ -552,12 +553,12 @@ function createAlert(alertData) {
         `);
         stmt.run(alert_level, details, existingAlert.id);
     } else {
-        // If it doesn't exist, insert a new one
+        // If it doesn't exist, insert a new one, explicitly setting status and updated_at
         const stmt = db.prepare(`
-            INSERT INTO product_alerts (tracked_sku_id, sku, region_id, region_name, alert_type, details, alert_level, updated_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO product_alerts (tracked_sku_id, sku, region_id, region_name, alert_type, details, alert_level, status, updated_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
         `);
-        stmt.run(tracked_sku_id, sku, region_id, region_name, alert_type, details, alert_level);
+        stmt.run(tracked_sku_id, sku, region_id, region_name, alert_type, details, alert_level, new Date().toISOString());
     }
 }
 function updateSystemConfigs(configs) {
@@ -579,7 +580,7 @@ function getActiveAlertsPaginated({ page = 1, limit = 50 }) {
     const { total } = totalStmt.get();
 
     // 然后，获取分页后的数据
-    const itemsStmt = db.prepare("SELECT * FROM product_alerts WHERE status = 'ACTIVE' ORDER BY created_at DESC, alert_level DESC LIMIT ? OFFSET ?");
+    const itemsStmt = db.prepare("SELECT * FROM product_alerts WHERE status = 'ACTIVE' ORDER BY updated_at DESC, created_at DESC, alert_level DESC LIMIT ? OFFSET ?");
     const items = itemsStmt.all(limit, offset);
 
     return {

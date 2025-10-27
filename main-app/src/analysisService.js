@@ -71,17 +71,22 @@ async function runInventoryAnalysis(trackedSkuId = null) {
                         start_qty: firstRecord.qty,
                         end_qty: lastRecord.qty,
                     };
-                    db.createAlert({
-                        tracked_sku_id: sku.id,
-                        sku: sku.sku,
-                        region_id: regionId,
-                        region_name: firstRecord.region_name,
-                        alert_type: 'FAST_CONSUMPTION',
-                        alert_level: alertLevel,
-                        details: JSON.stringify(alertDetails),
-                    });
-                    newAlertsCount++;
-                    console.log(`预警 (等级 ${alertLevel}): SKU ${sku.sku} 在 ${firstRecord.region_name} 消耗过快! 日均消耗率: ${consumptionRate.toFixed(3)}, 日均消耗量: ${dailyConsumption.toFixed(2)}`);
+                    try {
+                        db.createAlert({
+                            tracked_sku_id: sku.id,
+                            sku: sku.sku,
+                            region_id: parseInt(regionId, 10), // 确保 regionId 是数字
+                            region_name: firstRecord.region_name,
+                            alert_type: 'FAST_CONSUMPTION',
+                            alert_level: alertLevel,
+                            details: JSON.stringify(alertDetails),
+                        });
+                        newAlertsCount++;
+                        console.log(`预警 (等级 ${alertLevel}): SKU ${sku.sku} 在 ${firstRecord.region_name} 消耗过快! 日均消耗率: ${consumptionRate.toFixed(3)}, 日均消耗量: ${dailyConsumption.toFixed(2)}`);
+                    } catch (dbError) {
+                        console.error(`数据库写入预警失败: SKU=${sku.sku}, RegionID=${regionId}`, dbError);
+                        console.error('失败的预警数据:', alertDetails);
+                    }
                 }
             }
         }
