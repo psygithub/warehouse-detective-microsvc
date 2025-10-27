@@ -38,14 +38,23 @@ async function runInventoryAnalysis(trackedSkuId = null) {
             const regionHistory = historyByRegion[regionId];
             if (regionHistory.length < 2) continue;
 
-            // 简单线性回归分析消耗速度
+            // 改进消耗量计算逻辑，以正确处理周期内的补货情况
             const firstRecord = regionHistory[0];
             const lastRecord = regionHistory[regionHistory.length - 1];
-            
-            const qtyChange = firstRecord.qty - lastRecord.qty;
             const days = (new Date(lastRecord.record_date) - new Date(firstRecord.record_date)) / (1000 * 60 * 60 * 24);
 
+            let totalConsumption = 0;
+            for (let i = 0; i < regionHistory.length - 1; i++) {
+                const dailyChange = regionHistory[i].qty - regionHistory[i+1].qty;
+                if (dailyChange > 0) {
+                    totalConsumption += dailyChange; // 只累加库存减少的部分
+                }
+            }
+            
+            const qtyChange = totalConsumption;
+
             if (days > 0 && qtyChange > 0) {
+                // 消耗率的计算基准仍然使用期初库存，以保持一致性
                 const consumptionRate = (qtyChange / firstRecord.qty) / days;
                 const dailyConsumption = qtyChange / days;
                 
@@ -68,8 +77,8 @@ async function runInventoryAnalysis(trackedSkuId = null) {
                         dailyConsumption,
                         qtyChange,
                         days,
-                        start_qty: firstRecord.qty,
-                        end_qty: lastRecord.qty,
+                        start_qty: firstRecord.qty || 0,
+                        end_qty: (firstRecord.qty || 0) - qtyChange,
                     };
                     try {
                         db.createAlert({
