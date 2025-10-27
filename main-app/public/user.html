@@ -130,22 +130,24 @@
                 if (!response.ok) throw new Error('Failed to load content');
                 container.innerHTML = await response.text();
                 
-                // Ensure pivot-table.js is loaded if needed
-                if (section === 'pivot-table' && !document.querySelector('script[src="/js/pivot-table.js"]')) {
-                    const pivotScript = document.createElement('script');
-                    pivotScript.src = '/js/pivot-table.js';
-                    document.body.appendChild(pivotScript);
-                }
-
-                const script = document.createElement('script');
-                script.src = `/js/${section}.js`;
-                script.onload = () => {
-                    // Correctly call the initializer from the global registry
+                const scriptPath = `/js/${section}.js`;
+                // 检查脚本是否已存在，防止重复加载
+                if (!document.querySelector(`script[src^="${scriptPath}"]`)) {
+                    const script = document.createElement('script');
+                    // 添加版本号以防止缓存问题
+                    script.src = `${scriptPath}?v=1.0.2`; 
+                    script.onload = () => {
+                        if (window.sectionInitializers && typeof window.sectionInitializers[section] === 'function') {
+                            window.sectionInitializers[section]();
+                        }
+                    };
+                    document.body.appendChild(script);
+                } else {
+                    // 如果脚本已存在，直接尝试调用初始化函数
                     if (window.sectionInitializers && typeof window.sectionInitializers[section] === 'function') {
                         window.sectionInitializers[section]();
                     }
-                };
-                document.body.appendChild(script);
+                }
             } catch (error) {
                 container.innerHTML = `<p class="text-danger">无法加载内容: ${error.message}</p>`;
             }
