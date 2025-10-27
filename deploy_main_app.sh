@@ -53,7 +53,7 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 # 注意：此脚本假定 playwright-service 和 browser-service 正在运行或可访问。
 # 如果它们不在运行，主应用的部分功能可能会受限。
 docker run -d --name "$APP_CONTAINER_NAME" --network "$DOCKER_NETWORK" -p 3000:3000 --restart always \
-  -v "$SCRIPT_DIR/data:/app/data" \
+  -v "$SCRIPT_DIR/data:/data" \
   -v "$SCRIPT_DIR/output:/app/output" \
   -v "$SCRIPT_DIR/config:/app/config" \
   -e "PLAYWRIGHT_SERVICE_URL=http://playwright-service:3001" \
