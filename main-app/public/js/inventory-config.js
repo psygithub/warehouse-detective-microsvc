@@ -63,7 +63,10 @@
             fetchNowBtn.addEventListener('click', handleFetchNow);
         }
 
-        
+        // Load schedules
+        if (typeof loadSchedules === 'function') {
+            await loadSchedules();
+        }
     };
 
     async function handleSkuListClick(e) {
