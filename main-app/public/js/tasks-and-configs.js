@@ -1,5 +1,8 @@
 window.sectionInitializers = window.sectionInitializers || {};
 window.sectionInitializers['tasks-and-configs'] = async () => {
+    // Wait for the next frame to ensure DOM is ready
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
     // Load configs for the "execute with config" dropdown
     await loadConfigsForSelect();
     
