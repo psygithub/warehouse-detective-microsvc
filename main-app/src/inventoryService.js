@@ -92,36 +92,45 @@ async function _saveRegionalInventoryRecords(trackedSku, productData, recordDate
     }
 }
 
+// 统一的核心函数，用于获取并保存单个已跟踪SKU的库存数据
+async function _fetchAndSaveInventoryForTrackedSku(trackedSku, token) {
+    const result = await fetchInventoryFromAPI(trackedSku.sku, token);
+    if (result.success) {
+        const productData = result.data;
+        const recordDate = new Date().toISOString().split('T')[0];
+
+        // 保存主库存记录
+        const summaryRecord = {
+            tracked_sku_id: trackedSku.id,
+            sku: trackedSku.sku,
+            record_date: recordDate,
+            qty: productData.qty,
+            month_sale: productData.month_sale,
+            product_sales: productData.product_sales,
+            delivery_regions: productData.delivery_regions,
+            product_image: productData.product_image,
+            raw_data: productData.raw_data,
+        };
+        db.saveInventoryRecord(summaryRecord);
+
+        // 保存区域库存记录
+        await _saveRegionalInventoryRecords(trackedSku, productData, recordDate);
+        
+        return { success: true, sku: trackedSku.sku, name: productData.product_name, qty: productData.qty };
+    } else {
+        return { success: false, sku: trackedSku.sku, reason: result.reason };
+    }
+}
+
 async function fetchAndSaveAllTrackedSkus(token) {
     const skusToTrack = db.getTrackedSkus();
-    const results = { success: [], failed: [] };
-    for (const trackedSku of skusToTrack) {
-        const productData = await fetchInventoryFromAPI(trackedSku.sku, token);
-        if (productData) {
-            const recordDate = new Date().toISOString().split('T')[0];
-            
-            // 保存到旧表 (可选，如果仍需保留)
-            const summaryRecord = {
-                tracked_sku_id: trackedSku.id,
-                sku: trackedSku.sku,
-                record_date: recordDate,
-                qty: productData.qty,
-                month_sale: productData.month_sale,
-                product_sales: productData.product_sales,
-                delivery_regions: productData.delivery_regions,
-                product_image: productData.product_image,
-                raw_data: productData.raw_data,
-            };
-            db.saveInventoryRecord(summaryRecord);
+    const promises = skusToTrack.map(trackedSku => _fetchAndSaveInventoryForTrackedSku(trackedSku, token));
+    const allResults = await Promise.all(promises);
 
-            // 调用新的私有函数来保存区域数据
-            await _saveRegionalInventoryRecords(trackedSku, productData, recordDate);
-            
-            results.success.push({ sku: trackedSku.sku, name: productData.product_name, qty: productData.qty });
-        } else {
-            results.failed.push(trackedSku.sku);
-        }
-    }
+    const results = {
+        success: allResults.filter(r => r.success),
+        failed: allResults.filter(r => !r.success).map(r => r.sku),
+    };
     return results;
 }
 
@@ -184,16 +193,8 @@ async function fetchSingleSkuById(skuId, token) {
     if (!sku) {
         throw new Error(`SKU with ID ${skuId} not found.`);
     }
-    const productData = await fetchInventoryFromAPI(sku.sku, token);
-    if (productData) {
-        const recordDate = new Date().toISOString().split('T')[0];
-        
-        // 调用新的私有函数来保存区域数据
-        await _saveRegionalInventoryRecords(sku, productData, recordDate);
-
-        return { sku: sku.sku, qty: productData.qty };
-    }
-    return null;
+    // 完全委托给新的核心函数
+    return await _fetchAndSaveInventoryForTrackedSku(sku, token);
 }
 
 async function addOrUpdateTrackedSkusInBatch(skus, token) {
