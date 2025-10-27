@@ -1,19 +1,36 @@
+// A robust function to wait for an element to be available in the DOM
+function waitForElement(selector, timeout = 5000) {
+    return new Promise((resolve, reject) => {
+        const startTime = Date.now();
+        const interval = setInterval(() => {
+            const element = document.querySelector(selector);
+            if (element) {
+                clearInterval(interval);
+                resolve(element);
+            } else if (Date.now() - startTime > timeout) {
+                clearInterval(interval);
+                reject(new Error(`Element "${selector}" not found within ${timeout}ms`));
+            }
+        }, 100); // Check every 100ms
+    });
+}
+
 window.sectionInitializers = window.sectionInitializers || {};
 window.sectionInitializers['tasks-and-configs'] = async () => {
-    // Wait for the next frame to ensure DOM is ready
-    await new Promise(resolve => requestAnimationFrame(resolve));
+    try {
+        // Wait for a key element to be ready before proceeding
+        await waitForElement('#inventory-cron-input');
 
-    // Load configs for the "execute with config" dropdown
-    await loadConfigsForSelect();
-    
-    // Load and display the two special schedules
-    await loadSystemSchedules();
+        // Now that we're sure the DOM is ready, we can proceed
+        await loadConfigsForSelect();
+        await loadSystemSchedules();
+        await loadScheduleHistory();
+        setupEventListeners();
 
-    // Load the execution history
-    await loadScheduleHistory();
-
-    // Set up event listeners for the new save buttons
-    setupEventListeners();
+    } catch (error) {
+        console.error("Failed to initialize 'tasks-and-configs' section:", error);
+        // Optionally, display an error message to the user in the UI
+    }
 };
 
 async function loadSystemSchedules() {
