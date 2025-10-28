@@ -1027,6 +1027,8 @@ class WebServer {
                     scheduleId: schedule.id
                 });
             }
+        }, {
+            timezone: "Asia/Shanghai"
         });
         this.scheduledTasks.set(schedule.id, task);
         console.log(`Scheduled task "${schedule.name}" with cron "${schedule.cron}" has been started.`);

@@ -113,7 +113,7 @@ async function saveSystemSchedule(type) {
     try {
         if (scheduleId) {
             // Update existing schedule
-            await apiRequest(`/api/schedules/${scheduleId}`, 'PUT', { cron: cronInput });
+            await apiRequest(`/api/schedules/${scheduleId}`, 'PUT', { cron: cronInput, task_type: scheduleData.task_type });
         } else {
             // Create new schedule if it doesn't exist
             await apiRequest('/api/schedules', 'POST', scheduleData);
