@@ -365,7 +365,7 @@ function updateSchedule(id, updateData) {
   const schedule = getScheduleById(id);
   if (!schedule) return null;
   
-  const fields = ['name', 'cron', 'isActive', 'task_type'];
+  const fields = ['name', 'cron', 'configId', 'isActive', 'task_type'];
   const updates = [];
   const values = [];
 

@@ -537,7 +537,11 @@ class WebServer {
     this.app.get('/api/schedules', auth.authenticateToken.bind(auth), (req, res) => {
         console.log(`[API Entry] GET /api/schedules`);
         try {
-            const schedules = database.getSchedules();
+            let schedules = database.getSchedules();
+            const { task_type } = req.query;
+            if (task_type) {
+                schedules = schedules.filter(s => s.task_type === task_type);
+            }
             res.json(schedules);
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -1015,7 +1019,7 @@ class WebServer {
                 console.error(`[${new Date().toLocaleString()}] Error running scheduled task ${schedule.name}:`, error);
                 details = error.message;
             } finally {
-                const config = schedule.configId ? database.getConfigById(schedule.configId) : {};
+                const config = (schedule.configId ? database.getConfigById(schedule.configId) : null) || {};
                 database.saveResult({
                     userId: schedule.userId,
                     configId: schedule.configId || null,

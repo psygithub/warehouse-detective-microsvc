@@ -96,13 +96,33 @@ async function saveSystemSchedule(type) {
     if (type === 'inventory') {
         cronInput = document.getElementById('inventory-cron-input').value.trim();
         scheduleId = document.getElementById('save-inventory-schedule-btn').dataset.scheduleId;
-        scheduleData = { cron: cronInput, name: 'Default Inventory Schedule', task_type: 'fetch_inventory', isActive: true };
+        
+        // Find the first available configId, but don't fail if it's not there.
+        const configSelect = document.getElementById('configSelect');
+        const configId = (configSelect && configSelect.value) ? parseInt(configSelect.value, 10) : null;
+
+        scheduleData = { 
+            name: 'Default Inventory Schedule', 
+            cron: cronInput, 
+            task_type: 'fetch_inventory', 
+            isActive: true,
+            configId: configId
+        };
+
     } else if (type === 'analysis') {
         cronInput = document.getElementById('analysis-cron-input').value.trim();
         scheduleId = document.getElementById('save-analysis-schedule-btn').dataset.scheduleId;
-        scheduleData = { cron: cronInput, name: 'Alert Analysis Schedule', task_type: 'run_analysis', isActive: true };
+        
+        scheduleData = { 
+            name: 'Alert Analysis Schedule', 
+            cron: cronInput, 
+            task_type: 'run_analysis', 
+            isActive: true 
+            // No configId needed for analysis
+        };
+
     } else {
-        return;
+        return; // Should not happen
     }
 
     if (!cronInput) {
@@ -112,8 +132,8 @@ async function saveSystemSchedule(type) {
 
     try {
         if (scheduleId) {
-            // Update existing schedule
-            await apiRequest(`/api/schedules/${scheduleId}`, 'PUT', { cron: cronInput, task_type: scheduleData.task_type });
+            // Always send the full data object on update
+            await apiRequest(`/api/schedules/${scheduleId}`, 'PUT', scheduleData);
         } else {
             // Create new schedule if it doesn't exist
             await apiRequest('/api/schedules', 'POST', scheduleData);
