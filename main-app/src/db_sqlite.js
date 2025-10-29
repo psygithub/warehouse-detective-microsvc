@@ -3,6 +3,18 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 
+// 辅助函数：生成符合数据库格式的本地时间戳 (YYYY-MM-DD HH:MM:SS)
+function getLocalTimestampForDb() {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
 // 确保数据目录存在
 const dataDir = path.join(__dirname, '../../data');
 if (!fs.existsSync(dataDir)) {
@@ -290,7 +302,7 @@ function findUserById(id) { return db.prepare('SELECT * FROM users WHERE id = ?'
 function findUserByUsername(username) { return db.prepare('SELECT * FROM users WHERE username = ?').get(username); }
 function createUser(userData) {
   const stmt = db.prepare(`INSERT INTO users (username, email, password, role, createdAt, isActive) VALUES (?, ?, ?, ?, ?, ?)`);
-  const info = stmt.run(userData.username, userData.email, userData.password, userData.role || 'user', new Date().toISOString(), 1);
+  const info = stmt.run(userData.username, userData.email, userData.password, userData.role || 'user', getLocalTimestampForDb(), 1);
   return findUserById(info.lastInsertRowid);
 }
 function updateUser(id, updateData) {
@@ -309,7 +321,7 @@ function deleteUser(id) { return db.prepare('DELETE FROM users WHERE id = ?').ru
 
 function saveConfig(configData) {
   const stmt = db.prepare(`INSERT INTO configs (name, skus, regions, description, userId, createdAt) VALUES (?, ?, ?, ?, ?, ?)`);
-  const info = stmt.run(configData.name, JSON.stringify(configData.skus), JSON.stringify(configData.regions), configData.description || '', configData.userId, new Date().toISOString());
+  const info = stmt.run(configData.name, JSON.stringify(configData.skus), JSON.stringify(configData.regions), configData.description || '', configData.userId, getLocalTimestampForDb());
   return getConfigById(info.lastInsertRowid);
 }
 function getConfigs() { return db.prepare('SELECT * FROM configs').all(); }
@@ -339,7 +351,8 @@ function safeJsonParse(str, defaultValue = []) {
 
 function saveResult(resultData) {
   const stmt = db.prepare(`INSERT INTO results (userId, configId, skus, regions, results, status, isScheduled, scheduleId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-  const info = stmt.run(resultData.userId, resultData.configId, JSON.stringify(resultData.skus), JSON.stringify(resultData.regions), JSON.stringify(resultData.results), resultData.status, resultData.isScheduled ? 1 : 0, resultData.scheduleId, new Date().toISOString(), new Date().toISOString());
+  const timestamp = getLocalTimestampForDb();
+  const info = stmt.run(resultData.userId, resultData.configId, JSON.stringify(resultData.skus), JSON.stringify(resultData.regions), JSON.stringify(resultData.results), resultData.status, resultData.isScheduled ? 1 : 0, resultData.scheduleId, timestamp, timestamp);
   return getResultById(info.lastInsertRowid);
 }
 function getResults(limit = 100, offset = 0) {
@@ -356,7 +369,7 @@ function getResultById(id) {
 
 function saveSchedule(scheduleData) {
   const stmt = db.prepare(`INSERT INTO schedules (name, cron, configId, userId, isActive, createdAt, task_type) VALUES (?, ?, ?, ?, ?, ?, ?)`);
-  const info = stmt.run(scheduleData.name, scheduleData.cron, scheduleData.configId, scheduleData.userId, scheduleData.isActive ? 1 : 0, new Date().toISOString(), scheduleData.task_type || 'fetch_inventory');
+  const info = stmt.run(scheduleData.name, scheduleData.cron, scheduleData.configId, scheduleData.userId, scheduleData.isActive ? 1 : 0, getLocalTimestampForDb(), scheduleData.task_type || 'fetch_inventory');
   return getScheduleById(info.lastInsertRowid);
 }
 function getSchedules() { return db.prepare('SELECT * FROM schedules').all(); }
@@ -558,7 +571,7 @@ function createAlert(alertData) {
             INSERT INTO product_alerts (tracked_sku_id, sku, region_id, region_name, alert_type, details, alert_level, status, updated_at) 
             VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
         `);
-        stmt.run(tracked_sku_id, sku, region_id, region_name, alert_type, details, alert_level, new Date().toISOString());
+        stmt.run(tracked_sku_id, sku, region_id, region_name, alert_type, details, alert_level, getLocalTimestampForDb());
     }
 }
 function updateSystemConfigs(configs) {

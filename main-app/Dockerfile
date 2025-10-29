@@ -1,6 +1,9 @@
 # 使用一个 slim 镜像
 FROM node:20-bullseye-slim
 
+# 设置时区为亚洲/上海（北京时间）
+ENV TZ=Asia/Shanghai
+
 WORKDIR /app
 
 # 只复制 package 文件并安装生产依赖

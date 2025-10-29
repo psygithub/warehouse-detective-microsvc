@@ -126,11 +126,13 @@ function displayAlerts(alerts) {
         const consumptionRateText = typeof details.consumptionRate === 'number' ? `${(details.consumptionRate * 100).toFixed(2)}%` : 'N/A';
         const dailyConsumptionText = typeof details.dailyConsumption === 'number' ? details.dailyConsumption.toFixed(2) : 'N/A'; // 保留两位小数
         
-        const currentStock = details.end_qty;
+        // 兼容新旧两种命名方式
+        const startStock = details.startQty !== undefined ? details.startQty : details.start_qty;
+        const currentStock = details.endQty !== undefined ? details.endQty : details.end_qty;
         
         const detailParts = [];
         detailParts.push(`分析周期: ${details.days}天`);
-        detailParts.push(`期初: ${details.start_qty}`);
+        detailParts.push(`期初: ${startStock}`);
         detailParts.push(`消耗: ${details.qtyChange}`);
         detailParts.push(`当前: ${currentStock}`);
         detailParts.push(`日均消耗: ${dailyConsumptionText}`);
