@@ -115,6 +115,7 @@ class WebServer {
     this.setupFetchXizhiyueData();
     this.setupInventoryRoutes();
     this.setupUserSkuRoutes();
+    this.setupHealthCheckRoutes(); // 添加健康检查路由
     this.setupPageRoutes();
     this.setupErrorHandling();
   }
@@ -573,6 +574,15 @@ class WebServer {
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
+    });
+  }
+
+  setupHealthCheckRoutes() {
+    this.app.get('/api/health', (req, res) => {
+      res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString()
+      });
     });
   }
 
