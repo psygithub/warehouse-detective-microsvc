@@ -409,8 +409,8 @@ function createXizhiyueProduct(productData) {
   return stmt.run(productData.product_sku_id, productData.product_id, productData.product_sku, productData.product_name, productData.product_image, productData.month_sales, productData.product_price, productData.is_hot_sale, productData.is_new, productData.is_seckill, productData.is_wish, productData.target_region_id, productData.target_region_name, productData.target_region_code, productData.target_quantity, productData.target_price, productData.target_stock_status, productData.all_regions_inventory, productData.product_certificate, productData.product_categories, productData.product_attributes, productData.formatted_attributes, productData.delivery_regions, productData.member_price, productData.price_currency, productData.price_currency_symbol, productData.base_price, productData.guide_price, productData.real_price, productData.product_addtime);
 }
 function updateXizhiyueProduct(skuId, productData) {
-  const stmt = db.prepare(`UPDATE xizhiyue_products SET product_name = ?, product_image = ?, month_sales = ?, product_price = ?, is_hot_sale = ?, is_new = ?, is_seckill = ?, is_wish = ?, target_region_id = ?, target_region_name = ?, target_region_code = ?, target_quantity = ?, target_price = ?, target_stock_status = ?, all_regions_inventory = ?, product_certificate = ?, product_categories = ?, product_attributes = ?, formatted_attributes = ?, delivery_regions = ?, member_price = ?, price_currency = ?, price_currency_symbol = ?, base_price = ?, guide_price = ?, real_price = ?, product_addtime = ?, updated_at = CURRENT_TIMESTAMP WHERE product_sku_id = ?`);
-  return stmt.run(productData.product_name, productData.product_image, productData.month_sales, productData.product_price, productData.is_hot_sale, productData.is_new, productData.is_seckill, productData.is_wish, productData.target_region_id, productData.target_region_name, productData.target_region_code, productData.target_quantity, productData.target_price, productData.target_stock_status, productData.all_regions_inventory, productData.product_certificate, productData.product_categories, productData.product_attributes, productData.formatted_attributes, productData.delivery_regions, productData.member_price, productData.price_currency, productData.price_currency_symbol, productData.base_price, productData.guide_price, productData.real_price, productData.product_addtime, skuId);
+  const stmt = db.prepare(`UPDATE xizhiyue_products SET product_name = ?, product_image = ?, month_sales = ?, product_price = ?, is_hot_sale = ?, is_new = ?, is_seckill = ?, is_wish = ?, target_region_id = ?, target_region_name = ?, target_region_code = ?, target_quantity = ?, target_price = ?, target_stock_status = ?, all_regions_inventory = ?, product_certificate = ?, product_categories = ?, product_attributes = ?, formatted_attributes = ?, delivery_regions = ?, member_price = ?, price_currency = ?, price_currency_symbol = ?, base_price = ?, guide_price = ?, real_price = ?, product_addtime = ?, updated_at = ? WHERE product_sku_id = ?`);
+  return stmt.run(productData.product_name, productData.product_image, productData.month_sales, productData.product_price, productData.is_hot_sale, productData.is_new, productData.is_seckill, productData.is_wish, productData.target_region_id, productData.target_region_name, productData.target_region_code, productData.target_quantity, productData.target_price, productData.target_stock_status, productData.all_regions_inventory, productData.product_certificate, productData.product_categories, productData.product_attributes, productData.formatted_attributes, productData.delivery_regions, productData.member_price, productData.price_currency, productData.price_currency_symbol, productData.base_price, productData.guide_price, productData.real_price, productData.product_addtime, getLocalTimestampForDb(), skuId);
 }
 
 function getTrackedSkus() {
@@ -440,16 +440,18 @@ function updateTrackedSku(id, data) {
 }
 function addTrackedSku(skuData) {
     const { sku, product_name, product_id, product_sku_id, product_image } = skuData;
-    const stmt = db.prepare(`INSERT INTO tracked_skus (sku, product_name, product_id, product_sku_id, product_image) VALUES (?, ?, ?, ?, ?) ON CONFLICT(sku) DO UPDATE SET product_name = excluded.product_name, product_id = excluded.product_id, product_sku_id = excluded.product_sku_id, product_image = excluded.product_image, updated_at = CURRENT_TIMESTAMP`);
-    stmt.run(sku, product_name, product_id, product_sku_id, product_image);
+    const timestamp = getLocalTimestampForDb();
+    const stmt = db.prepare(`INSERT INTO tracked_skus (sku, product_name, product_id, product_sku_id, product_image, created_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(sku) DO UPDATE SET product_name = excluded.product_name, product_id = excluded.product_id, product_sku_id = excluded.product_sku_id, product_image = excluded.product_image, updated_at = ?`);
+    stmt.run(sku, product_name, product_id, product_sku_id, product_image, timestamp, timestamp);
     return getTrackedSkuBySku(sku);
 }
 
 function addTrackedSkusBulk(skusData) {
-    const stmt = db.prepare(`INSERT INTO tracked_skus (sku, product_name, product_id, product_sku_id, product_image) VALUES (@sku, @product_name, @product_id, @product_sku_id, @product_image) ON CONFLICT(sku) DO UPDATE SET product_name = excluded.product_name, product_id = excluded.product_id, product_sku_id = excluded.product_sku_id, product_image = excluded.product_image, updated_at = CURRENT_TIMESTAMP`);
+    const stmt = db.prepare(`INSERT INTO tracked_skus (sku, product_name, product_id, product_sku_id, product_image, created_at) VALUES (@sku, @product_name, @product_id, @product_sku_id, @product_image, @created_at) ON CONFLICT(sku) DO UPDATE SET product_name = excluded.product_name, product_id = excluded.product_id, product_sku_id = excluded.product_sku_id, product_image = excluded.product_image, updated_at = @updated_at`);
     const transaction = db.transaction((skus) => {
+        const timestamp = getLocalTimestampForDb();
         for (const sku of skus) {
-            stmt.run(sku);
+            stmt.run({ ...sku, created_at: timestamp, updated_at: timestamp });
         }
         return { count: skus.length };
     });
@@ -461,15 +463,17 @@ function deleteTrackedSku(id) { return db.prepare('DELETE FROM tracked_skus WHER
 function getInventoryHistory(tracked_sku_id) { return db.prepare(`SELECT * FROM inventory_history WHERE tracked_sku_id = ? ORDER BY record_date ASC`).all(tracked_sku_id); }
 function saveInventoryRecord(record) {
     const { tracked_sku_id, sku, record_date, qty, month_sale, product_sales, delivery_regions, product_image, raw_data } = record;
-    const stmt = db.prepare(`INSERT INTO inventory_history (tracked_sku_id, sku, record_date, qty, month_sale, product_sales, delivery_regions, product_image, raw_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(tracked_sku_id, record_date) DO UPDATE SET sku = excluded.sku, qty = excluded.qty, month_sale = excluded.month_sale, product_sales = excluded.product_sales, delivery_regions = excluded.delivery_regions, product_image = excluded.product_image, raw_data = excluded.raw_data, created_at = CURRENT_TIMESTAMP`);
-    const info = stmt.run(tracked_sku_id, sku, record_date, qty, month_sale, product_sales, JSON.stringify(delivery_regions), product_image, JSON.stringify(raw_data));
+    const timestamp = getLocalTimestampForDb();
+    const stmt = db.prepare(`INSERT INTO inventory_history (tracked_sku_id, sku, record_date, qty, month_sale, product_sales, delivery_regions, product_image, raw_data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(tracked_sku_id, record_date) DO UPDATE SET sku = excluded.sku, qty = excluded.qty, month_sale = excluded.month_sale, product_sales = excluded.product_sales, delivery_regions = excluded.delivery_regions, product_image = excluded.product_image, raw_data = excluded.raw_data, created_at = ?`);
+    const info = stmt.run(tracked_sku_id, sku, record_date, qty, month_sale, product_sales, JSON.stringify(delivery_regions), product_image, JSON.stringify(raw_data), timestamp, timestamp);
     return info.lastInsertRowid;
 }
 function hasInventoryHistory(tracked_sku_id) { return !!db.prepare('SELECT id FROM inventory_history WHERE tracked_sku_id = ? LIMIT 1').get(tracked_sku_id); }
 function saveRegionalInventoryRecord(record) {
     const { tracked_sku_id, sku, product_sku_id, product_id, record_date, region_id, region_name, region_code, qty, price } = record;
-    const stmt = db.prepare(`INSERT INTO regional_inventory_history (tracked_sku_id, sku, product_sku_id, product_id, record_date, region_id, region_name, region_code, qty, price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(tracked_sku_id, record_date, region_id) DO UPDATE SET qty = excluded.qty, price = excluded.price, product_sku_id = excluded.product_sku_id, product_id = excluded.product_id, created_at = CURRENT_TIMESTAMP`);
-    stmt.run(tracked_sku_id, sku, product_sku_id, product_id, record_date, region_id, region_name, region_code, qty, price);
+    const timestamp = getLocalTimestampForDb();
+    const stmt = db.prepare(`INSERT INTO regional_inventory_history (tracked_sku_id, sku, product_sku_id, product_id, record_date, region_id, region_name, region_code, qty, price, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(tracked_sku_id, record_date, region_id) DO UPDATE SET qty = excluded.qty, price = excluded.price, product_sku_id = excluded.product_sku_id, product_id = excluded.product_id, created_at = ?`);
+    stmt.run(tracked_sku_id, sku, product_sku_id, product_id, record_date, region_id, region_name, region_code, qty, price, timestamp, timestamp);
 }
 function getSystemConfigs() {
     const rows = db.prepare('SELECT key, value FROM system_configs').all();
@@ -557,21 +561,22 @@ function createAlert(alertData) {
         WHERE tracked_sku_id = ? AND region_id = ? AND alert_type = ? AND status = 'ACTIVE'
     `).get(tracked_sku_id, region_id, alert_type);
 
+    const timestamp = getLocalTimestampForDb();
     if (existingAlert) {
         // If it exists, update it with the new level and details
         const stmt = db.prepare(`
             UPDATE product_alerts 
-            SET alert_level = ?, details = ?, updated_at = CURRENT_TIMESTAMP 
+            SET alert_level = ?, details = ?, updated_at = ? 
             WHERE id = ?
         `);
-        stmt.run(alert_level, details, existingAlert.id);
+        stmt.run(alert_level, details, timestamp, existingAlert.id);
     } else {
         // If it doesn't exist, insert a new one, explicitly setting status and updated_at
         const stmt = db.prepare(`
-            INSERT INTO product_alerts (tracked_sku_id, sku, region_id, region_name, alert_type, details, alert_level, status, updated_at) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
+            INSERT INTO product_alerts (tracked_sku_id, sku, region_id, region_name, alert_type, details, alert_level, status, created_at, updated_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?)
         `);
-        stmt.run(tracked_sku_id, sku, region_id, region_name, alert_type, details, alert_level, getLocalTimestampForDb());
+        stmt.run(tracked_sku_id, sku, region_id, region_name, alert_type, details, alert_level, timestamp, timestamp);
     }
 }
 function updateSystemConfigs(configs) {
