@@ -283,7 +283,7 @@ function ensureDefaultAdmin() {
   const admin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
   if (!admin) {
     const hash = bcrypt.hashSync('admin123', 10);
-    db.prepare(`INSERT INTO users (username, email, password, role, createdAt, isActive) VALUES (?, ?, ?, ?, ?, ?)`).run('admin', 'admin@warehouse.com', hash, 'admin', new Date().toISOString(), 1);
+    db.prepare(`INSERT INTO users (username, email, password, role, createdAt, isActive) VALUES (?, ?, ?, ?, ?, ?)`).run('admin', 'admin@warehouse.com', hash, 'admin', getLocalTimestampForDb(), 1);
   }
 }
 
@@ -414,7 +414,7 @@ function updateXizhiyueProduct(skuId, productData) {
 }
 
 function getTrackedSkus() {
-    const stmt = db.prepare(`SELECT ts.id, ts.sku, ts.product_name, ts.product_image, ts.product_id, ts.product_sku_id, ts.created_at, ts.updated_at, (SELECT qty FROM inventory_history WHERE tracked_sku_id = ts.id ORDER BY created_at DESC LIMIT 1) as latest_qty, (SELECT month_sale FROM inventory_history WHERE tracked_sku_id = ts.id ORDER BY created_at DESC LIMIT 1) as latest_month_sale, (SELECT created_at FROM inventory_history WHERE tracked_sku_id = ts.id ORDER BY created_at DESC LIMIT 1) as latest_record_time FROM tracked_skus ts ORDER BY ts.created_at DESC`);
+    const stmt = db.prepare(`SELECT ts.id, ts.sku, ts.product_name, ts.product_image, ts.product_id, ts.product_sku_id, ts.created_at, ts.updated_at, (SELECT qty FROM inventory_history WHERE sku = ts.sku ORDER BY created_at DESC LIMIT 1) as latest_qty, (SELECT month_sale FROM inventory_history WHERE sku = ts.sku ORDER BY created_at DESC LIMIT 1) as latest_month_sale, (SELECT created_at FROM inventory_history WHERE sku = ts.sku ORDER BY created_at DESC LIMIT 1) as latest_record_time FROM tracked_skus ts ORDER BY ts.created_at DESC`);
     return stmt.all();
 }
 function getTrackedSkuBySku(sku) { return db.prepare('SELECT * FROM tracked_skus WHERE sku = ?').get(sku); }
@@ -423,9 +423,9 @@ function getTrackedSkuById(id) {
         SELECT 
             ts.id, ts.sku, ts.product_name, ts.product_image, ts.product_id, ts.product_sku_id, 
             ts.created_at, ts.updated_at, 
-            (SELECT qty FROM inventory_history WHERE tracked_sku_id = ts.id ORDER BY record_date DESC, created_at DESC LIMIT 1) as latest_qty,
-            (SELECT month_sale FROM inventory_history WHERE tracked_sku_id = ts.id ORDER BY record_date DESC, created_at DESC LIMIT 1) as latest_month_sale,
-            (SELECT created_at FROM inventory_history WHERE tracked_sku_id = ts.id ORDER BY record_date DESC, created_at DESC LIMIT 1) as latest_record_time 
+            (SELECT qty FROM inventory_history WHERE sku = ts.sku ORDER BY record_date DESC, created_at DESC LIMIT 1) as latest_qty,
+            (SELECT month_sale FROM inventory_history WHERE sku = ts.sku ORDER BY record_date DESC, created_at DESC LIMIT 1) as latest_month_sale,
+            (SELECT created_at FROM inventory_history WHERE sku = ts.sku ORDER BY record_date DESC, created_at DESC LIMIT 1) as latest_record_time 
         FROM tracked_skus ts 
         WHERE ts.id = ?
     `);
@@ -482,7 +482,10 @@ function getSystemConfigs() {
 function getRegionalInventoryHistoryForSku(tracked_sku_id, days) {
     const date = new Date();
     date.setDate(date.getDate() - days);
-    const startDate = date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const startDate = `${year}-${month}-${day}`;
     return db.prepare(`SELECT * FROM regional_inventory_history WHERE tracked_sku_id = ? AND record_date >= ? ORDER BY record_date ASC`).all(tracked_sku_id, startDate);
 }
 function getRegionalInventoryHistoryBySkuId(skuId) { return db.prepare('SELECT * FROM regional_inventory_history WHERE tracked_sku_id = ? ORDER BY record_date ASC').all(skuId); }

@@ -1,7 +1,17 @@
 const db = require('./db_sqlite');
 const fetch = require('node-fetch'); // 使用 node-fetch
 
-const API_URL = 'https://westmonth.com/shop_api/products/load_list?sort_mode=2&page=1&indistinct=';
+// 辅助函数：生成符合数据库格式的本地日期 (YYYY-MM-DD)
+function getLocalDateForDb() {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+const LIST_API_URL = 'https://westmonth.com/shop_api/products/load_list?sort_mode=2&page=1&indistinct=';
+const DETAILS_API_URL = 'https://westmonth.com/shop_api/products/detail?product_id=';
 
 function formatProductData(apiData) {
     if (!apiData) return null;
@@ -20,7 +30,7 @@ function formatProductData(apiData) {
 }
 
 async function fetchInventoryFromAPI(sku, token) {
-    const url = `${API_URL}${sku}`;
+    const url = `${LIST_API_URL}${sku}`;
     const headers = {
         'Authorization': `Bearer ${token}`,
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome',
@@ -97,7 +107,7 @@ async function _fetchAndSaveInventoryForTrackedSku(trackedSku, token) {
     const result = await fetchInventoryFromAPI(trackedSku.sku, token);
     if (result.success) {
         const productData = result.data;
-        const recordDate = new Date().toISOString().split('T')[0];
+        const recordDate = getLocalDateForDb();
 
         // 保存主库存记录
         const summaryRecord = {
@@ -152,7 +162,7 @@ async function addOrUpdateTrackedSku(sku, token) {
             return { success: false, sku: sku, reason: '数据库操作失败' };
         }
 
-        const recordDate = new Date().toISOString().split('T')[0];
+        const recordDate = getLocalDateForDb();
         
         const summaryRecord = {
             tracked_sku_id: trackedSku.id,
@@ -221,7 +231,7 @@ async function addOrUpdateTrackedSkusInBatch(skus, token) {
         }));
         db.addTrackedSkusBulk(skusToAdd);
 
-        const recordDate = new Date().toISOString().split('T')[0];
+        const recordDate = getLocalDateForDb();
         for (const productData of successfulFetches) {
             const trackedSku = db.getTrackedSkuBySku(productData.product_sku);
             if (trackedSku) {
