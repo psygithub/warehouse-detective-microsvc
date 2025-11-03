@@ -303,10 +303,20 @@ async function addOrUpdateTrackedSkusInBatch(skus, token) {
         console.log('[LOG] [Batch Add] Data to be bulk inserted:', skusToAdd);
         db.addTrackedSkusBulk(skusToAdd);
 
+        // 优化：在批量插入后，一次性获取所有相关的 tracked_sku 记录
+        const skuStrings = successfulFetches.map(pd => pd.product_sku);
+        const trackedSkusFromDb = db.getTrackedSkusBySkuNames(skuStrings);
+        const trackedSkusMap = trackedSkusFromDb.reduce((map, sku) => {
+            map[sku.sku] = sku;
+            return map;
+        }, {});
+        console.log(`[LOG] [Batch Add] Fetched ${trackedSkusFromDb.length} tracked SKUs from DB after bulk insert.`);
+
+
         const recordDate = getLocalDateForDb();
         console.log(`[LOG] [Batch Add] Saving inventory records for ${successfulFetches.length} SKUs for date: ${recordDate}`);
         for (const productData of successfulFetches) {
-            const trackedSku = db.getTrackedSkuBySku(productData.product_sku);
+            const trackedSku = trackedSkusMap[productData.product_sku]; // 从 map 中高效查找
             if (trackedSku) {
                 const summaryRecord = {
                     tracked_sku_id: trackedSku.id,
