@@ -300,6 +300,7 @@ async function addOrUpdateTrackedSkusInBatch(skus, token) {
             product_image: productData.product_image,
         }));
         console.log(`[LOG] [Batch Add] Bulk inserting ${skusToAdd.length} new SKUs into the database.`);
+        console.log('[LOG] [Batch Add] Data to be bulk inserted:', skusToAdd);
         db.addTrackedSkusBulk(skusToAdd);
 
         const recordDate = getLocalDateForDb();
@@ -318,6 +319,7 @@ async function addOrUpdateTrackedSkusInBatch(skus, token) {
                     product_image: productData.product_image,
                     raw_data: productData.raw_data,
                 };
+                console.log(`[LOG] [Batch Add] Saving summary record for SKU ${trackedSku.sku}:`, summaryRecord);
                 db.saveInventoryRecord(summaryRecord);
                 await _saveRegionalInventoryRecords(trackedSku, productData, recordDate);
             } else {
