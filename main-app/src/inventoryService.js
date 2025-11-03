@@ -29,7 +29,7 @@ function formatProductData(apiData) {
     };
 }
 
-async function fetchInventoryFromAPI(sku, token) {
+async function fetchInventoryFromListAPI(sku, token) {
     const url = `${LIST_API_URL}${sku}`;
     const headers = {
         'Authorization': `Bearer ${token}`,
@@ -37,15 +37,13 @@ async function fetchInventoryFromAPI(sku, token) {
         'Accept': 'application/json, text/plain, */*',
     };
 
-    console.log(`[LOG] Starting to fetch inventory for SKU: ${sku}`);
-    console.log(`[LOG] Request URL: ${url}`);
-    console.log('[LOG] Request Headers:', headers);
+    console.log(`[LOG] [List API] Starting to fetch inventory for SKU: ${sku}`);
+    console.log(`[LOG] [List API] Request URL: ${url}`);
 
     try {
         const response = await fetch(url, { headers });
-        
         const responseText = await response.text();
-        console.log(`[LOG] Full API response for SKU ${sku}:`, responseText);
+        console.log(`[LOG] [List API] Full API response for SKU ${sku}:`, responseText);
 
         if (!response.ok) {
             throw new Error(`API request failed with status ${response.status}`);
@@ -54,16 +52,80 @@ async function fetchInventoryFromAPI(sku, token) {
         const responseData = JSON.parse(responseText);
         if (responseData && responseData.status === 'success' && responseData.data.data.length > 0) {
             const productData = responseData.data.data[0];
-            console.log(`[LOG] Successfully fetched inventory for SKU: ${sku}. Product Name: ${productData.product_name}, Quantity: ${productData.qty}`);
+            console.log(`[LOG] [List API] Successfully fetched inventory for SKU: ${sku}.`);
             return { success: true, data: formatProductData(productData) };
         }
         
         const reason = responseData.data.data.length === 0 ? 'API未返回产品信息' : 'API响应格式不正确';
-        console.warn(`[LOG] API call for SKU ${sku} did not return valid data. Reason: ${reason}`);
+        console.warn(`[LOG] [List API] Call for SKU ${sku} did not return valid data. Reason: ${reason}`);
         return { success: false, sku: sku, reason: reason };
     } catch (error) {
-        console.error(`[LOG] Error fetching inventory for SKU ${sku}:`, error.message);
+        console.error(`[LOG] [List API] Error fetching inventory for SKU ${sku}:`, error.message);
         return { success: false, sku: sku, reason: error.message };
+    }
+}
+
+async function fetchInventoryFromDetailsAPI(productId, sku, token) {
+    const url = `${DETAILS_API_URL}${productId}`;
+    const headers = {
+        'Authorization': `Bearer ${token}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome',
+        'Accept': 'application/json, text/plain, */*',
+    };
+
+    console.log(`[LOG] [Details API] Starting to fetch inventory for SKU: ${sku} (Product ID: ${productId})`);
+    console.log(`[LOG] [Details API] Request URL: ${url}`);
+
+    try {
+        const response = await fetch(url, { headers });
+        const responseText = await response.text();
+
+        if (!response.ok) {
+            throw new Error(`API request failed with status ${response.status}`);
+        }
+
+        const responseData = JSON.parse(responseText);
+        if (responseData && responseData.status === 'success' && responseData.data) {
+            const productDetails = responseData.data;
+            const skuDetails = productDetails.skus.find(s => s.sku === sku);
+
+            if (skuDetails) {
+                // 映射数据结构以匹配 formatProductData 的期望
+                const mappedData = {
+                    product_sku_id: skuDetails.id,
+                    product_id: productDetails.id,
+                    product_sku: skuDetails.sku,
+                    product_name: productDetails.name,
+                    qty: skuDetails.quantity, // 使用 quantity 字段
+                    month_sale: parseInt(productDetails.month_sale, 10) || 0, // 从主产品信息中获取
+                    product_sales: 0, // 详情API中没有此字段
+                    delivery_regions: skuDetails.delivery_regions,
+                    product_image: skuDetails.images.length > 0 ? skuDetails.images[0].thumb : null,
+                    raw_data: skuDetails, // 保存原始的SKU详情
+                };
+                console.log(`[LOG] [Details API] Successfully fetched inventory for SKU: ${sku}.`);
+                return { success: true, data: formatProductData(mappedData) };
+            }
+        }
+        
+        const reason = '详情API未返回匹配的SKU信息';
+        console.warn(`[LOG] [Details API] Call for SKU ${sku} did not return valid data. Reason: ${reason}`);
+        return { success: false, sku: sku, reason: reason };
+    } catch (error) {
+        console.error(`[LOG] [Details API] Error fetching inventory for SKU ${sku}:`, error.message);
+        return { success: false, sku: sku, reason: error.message };
+    }
+}
+
+async function fetchInventoryFromAPI(sku, token) {
+    const trackedSku = db.getTrackedSkuBySku(sku);
+
+    if (trackedSku && trackedSku.product_id) {
+        // 如果SKU已存在且有product_id，调用详情API
+        return await fetchInventoryFromDetailsAPI(trackedSku.product_id, sku, token);
+    } else {
+        // 否则，调用列表API
+        return await fetchInventoryFromListAPI(sku, token);
     }
 }
 
@@ -95,7 +157,6 @@ async function _saveRegionalInventoryRecords(trackedSku, productData, recordDate
                     qty: parseInt(regionData.qty, 10) || 0,
                     price: regionData.product_price,
                 };
-                // console.log(`[LOG] Saving regional record for SKU ${trackedSku.sku}:`, regionalRecord);
                 db.saveRegionalInventoryRecord(regionalRecord);
             }
         }
