@@ -447,7 +447,9 @@ function addTrackedSku(skuData) {
 }
 
 function addTrackedSkusBulk(skusData) {
-    const stmt = db.prepare(`INSERT INTO tracked_skus (sku, product_name, product_id, product_sku_id, product_image, created_at) VALUES (@sku, @product_name, @product_id, @product_sku_id, @product_image, @created_at) ON CONFLICT(sku) DO UPDATE SET product_name = excluded.product_name, product_id = excluded.product_id, product_sku_id = excluded.product_sku_id, product_image = excluded.product_image, updated_at = @updated_at`);
+    const sql = `INSERT INTO tracked_skus (sku, product_name, product_id, product_sku_id, product_image, created_at) VALUES (@sku, @product_name, @product_id, @product_sku_id, @product_image, @created_at) ON CONFLICT(sku) DO UPDATE SET product_name = excluded.product_name, product_id = excluded.product_id, product_sku_id = excluded.product_sku_id, product_image = excluded.product_image, updated_at = @updated_at`;
+    console.log('[DEBUG] [addTrackedSkusBulk] SQL:', sql);
+    const stmt = db.prepare(sql);
     const transaction = db.transaction((skus) => {
         const timestamp = getLocalTimestampForDb();
         for (const sku of skus) {
@@ -469,12 +471,20 @@ function deleteTrackedSku(id) { return db.prepare('DELETE FROM tracked_skus WHER
 
 function getInventoryHistory(tracked_sku_id) { return db.prepare(`SELECT * FROM inventory_history WHERE tracked_sku_id = ? ORDER BY record_date ASC`).all(tracked_sku_id); }
 function saveInventoryRecord(record) {
+    console.log('[DEBUG] [saveInventoryRecord] Received record:', record);
     const { tracked_sku_id, sku, record_date, qty, month_sale, product_sales, delivery_regions, product_image, raw_data } = record;
     const timestamp = getLocalTimestampForDb();
-    // 修正：在冲突时，应该更新一个 `updated_at` 字段（如果表结构有的话），而不是再次设置 `created_at`
-    // 由于 inventory_history 没有 updated_at 字段，我们只更新数据字段，并保持 created_at 不变。
-    // 或者，我们可以添加一个 updated_at 字段来跟踪更新时间。这里我们选择只更新数据。
-    const stmt = db.prepare(`
+
+    // 参数类型检查和日志记录
+    console.log(`[DEBUG] [saveInventoryRecord] Parameters for DB:`);
+    console.log(`  - tracked_sku_id: ${tracked_sku_id} (type: ${typeof tracked_sku_id})`);
+    console.log(`  - sku: ${sku} (type: ${typeof sku})`);
+    console.log(`  - record_date: ${record_date} (type: ${typeof record_date})`);
+    console.log(`  - qty: ${qty} (type: ${typeof qty})`);
+    console.log(`  - month_sale: ${month_sale} (type: ${typeof month_sale})`);
+    console.log(`  - product_sales: ${product_sales} (type: ${typeof product_sales})`);
+
+    const sql = `
         INSERT INTO inventory_history (tracked_sku_id, sku, record_date, qty, month_sale, product_sales, delivery_regions, product_image, raw_data, created_at) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
         ON CONFLICT(tracked_sku_id, record_date) 
@@ -486,10 +496,18 @@ function saveInventoryRecord(record) {
             delivery_regions = excluded.delivery_regions, 
             product_image = excluded.product_image, 
             raw_data = excluded.raw_data
-    `);
-    // 注意：由于上面的语句中没有为 UPDATE 部分提供参数，所以这里的参数数量是正确的 (10个)
-    const info = stmt.run(tracked_sku_id, sku, record_date, qty, month_sale, product_sales, JSON.stringify(delivery_regions), product_image, JSON.stringify(raw_data), timestamp);
-    return info.lastInsertRowid;
+    `;
+    console.log('[DEBUG] [saveInventoryRecord] SQL:', sql.trim().replace(/\s+/g, ' '));
+    const stmt = db.prepare(sql);
+    
+    try {
+        const info = stmt.run(tracked_sku_id, sku, record_date, qty, month_sale, product_sales, JSON.stringify(delivery_regions), product_image, JSON.stringify(raw_data), timestamp);
+        console.log('[DEBUG] [saveInventoryRecord] stmt.run executed. Result:', info);
+        return info.lastInsertRowid;
+    } catch (error) {
+        console.error('[DEBUG] [saveInventoryRecord] FATAL: Error executing stmt.run:', error);
+        throw error;
+    }
 }
 function hasInventoryHistory(tracked_sku_id) { return !!db.prepare('SELECT id FROM inventory_history WHERE tracked_sku_id = ? LIMIT 1').get(tracked_sku_id); }
 function saveRegionalInventoryRecord(record) {
