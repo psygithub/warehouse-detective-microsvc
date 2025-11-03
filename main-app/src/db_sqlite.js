@@ -455,7 +455,14 @@ function addTrackedSkusBulk(skusData) {
         }
         return { count: skus.length };
     });
-    return transaction(skusData);
+
+    try {
+        return transaction(skusData);
+    } catch (error) {
+        console.error('[LOG] [DB Error] Bulk SKU insert transaction failed:', error);
+        // 根据需要，可以决定是向上抛出异常还是返回一个错误指示
+        throw error; // 或者 return { error: error.message };
+    }
 }
 
 function deleteTrackedSku(id) { return db.prepare('DELETE FROM tracked_skus WHERE id = ?').run(id).changes > 0; }
@@ -464,8 +471,24 @@ function getInventoryHistory(tracked_sku_id) { return db.prepare(`SELECT * FROM 
 function saveInventoryRecord(record) {
     const { tracked_sku_id, sku, record_date, qty, month_sale, product_sales, delivery_regions, product_image, raw_data } = record;
     const timestamp = getLocalTimestampForDb();
-    const stmt = db.prepare(`INSERT INTO inventory_history (tracked_sku_id, sku, record_date, qty, month_sale, product_sales, delivery_regions, product_image, raw_data, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(tracked_sku_id, record_date) DO UPDATE SET sku = excluded.sku, qty = excluded.qty, month_sale = excluded.month_sale, product_sales = excluded.product_sales, delivery_regions = excluded.delivery_regions, product_image = excluded.product_image, raw_data = excluded.raw_data, created_at = ?`);
-    const info = stmt.run(tracked_sku_id, sku, record_date, qty, month_sale, product_sales, JSON.stringify(delivery_regions), product_image, JSON.stringify(raw_data), timestamp, timestamp);
+    // 修正：在冲突时，应该更新一个 `updated_at` 字段（如果表结构有的话），而不是再次设置 `created_at`
+    // 由于 inventory_history 没有 updated_at 字段，我们只更新数据字段，并保持 created_at 不变。
+    // 或者，我们可以添加一个 updated_at 字段来跟踪更新时间。这里我们选择只更新数据。
+    const stmt = db.prepare(`
+        INSERT INTO inventory_history (tracked_sku_id, sku, record_date, qty, month_sale, product_sales, delivery_regions, product_image, raw_data, created_at) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
+        ON CONFLICT(tracked_sku_id, record_date) 
+        DO UPDATE SET 
+            sku = excluded.sku, 
+            qty = excluded.qty, 
+            month_sale = excluded.month_sale, 
+            product_sales = excluded.product_sales, 
+            delivery_regions = excluded.delivery_regions, 
+            product_image = excluded.product_image, 
+            raw_data = excluded.raw_data
+    `);
+    // 注意：由于上面的语句中没有为 UPDATE 部分提供参数，所以这里的参数数量是正确的 (10个)
+    const info = stmt.run(tracked_sku_id, sku, record_date, qty, month_sale, product_sales, JSON.stringify(delivery_regions), product_image, JSON.stringify(raw_data), timestamp);
     return info.lastInsertRowid;
 }
 function hasInventoryHistory(tracked_sku_id) { return !!db.prepare('SELECT id FROM inventory_history WHERE tracked_sku_id = ? LIMIT 1').get(tracked_sku_id); }
