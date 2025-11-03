@@ -9,8 +9,10 @@ function getLocalDateForDb() {
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 }
-
-const LIST_API_URL = 'https://westmonth.com/shop_api/products/load_list?sort_mode=2&page=1&sku=';
+const LIST_API_URLS = [
+    'https://westmonth.com/shop_api/products/load_list?sort_mode=2&page=1&indistinct=',
+    'https://westmonth.com/shop_api/products/load_list?sort_mode=2&page=1&sku='
+];
 const DETAILS_API_URL = 'https://westmonth.com/shop_api/products/detail?product_id=';
 
 function formatProductData(apiData) {
@@ -30,39 +32,53 @@ function formatProductData(apiData) {
 }
 
 async function fetchInventoryFromListAPI(sku, token) {
-    const url = `${LIST_API_URL}${sku}`;
     const headers = {
         'Authorization': `Bearer ${token}`,
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome',
         'Accept': 'application/json, text/plain, */*',
     };
 
-    console.log(`[LOG] [List API] Starting to fetch inventory for SKU: ${sku}`);
-    console.log(`[LOG] [List API] Request URL: ${url}`);
+    console.log(`[LOG] [List API] Starting to fetch inventory for SKU: ${sku} using up to ${LIST_API_URLS.length} URLs.`);
 
-    try {
-        const response = await fetch(url, { headers });
-        const responseText = await response.text();
-        console.log(`[LOG] [List API] Full API response for SKU ${sku}:`, responseText);
+    for (let i = 0; i < LIST_API_URLS.length; i++) {
+        const baseUrl = LIST_API_URLS[i];
+        const url = `${baseUrl}${sku}`;
+        console.log(`[LOG] [List API] Attempt #${i + 1}: Requesting URL: ${url}`);
 
-        if (!response.ok) {
-            throw new Error(`API request failed with status ${response.status}`);
+        try {
+            const response = await fetch(url, { headers });
+            const responseText = await response.text();
+            
+            if (!response.ok) {
+                console.warn(`[LOG] [List API] Attempt #${i + 1} failed with status ${response.status}.`);
+                continue; // Try next URL
+            }
+
+            const responseData = JSON.parse(responseText);
+            if (responseData && responseData.status === 'success' && responseData.data.data.length > 0) {
+                const productData = responseData.data.data[0];
+
+                // 关键验证：检查返回的SKU是否与请求的SKU完全匹配
+                if (productData.product_sku === sku) {
+                    console.log(`[LOG] [List API] Attempt #${i + 1} SUCCEEDED. Found matching SKU: ${sku}.`);
+                    return { success: true, data: formatProductData(productData) };
+                } else {
+                    console.warn(`[LOG] [List API] Attempt #${i + 1} found a mismatched SKU. Requested: ${sku}, Got: ${productData.product_sku}.`);
+                    // 继续尝试下一个URL，因为这个结果不准确
+                }
+            } else {
+                console.log(`[LOG] [List API] Attempt #${i + 1} did not return any product data.`);
+            }
+        } catch (error) {
+            console.error(`[LOG] [List API] Attempt #${i + 1} threw an error:`, error.message);
+            // 继续尝试下一个URL
         }
-
-        const responseData = JSON.parse(responseText);
-        if (responseData && responseData.status === 'success' && responseData.data.data.length > 0) {
-            const productData = responseData.data.data[0];
-            console.log(`[LOG] [List API] Successfully fetched inventory for SKU: ${sku}.`);
-            return { success: true, data: formatProductData(productData) };
-        }
-        
-        const reason = responseData.data.data.length === 0 ? 'API未返回产品信息' : 'API响应格式不正确';
-        console.warn(`[LOG] [List API] Call for SKU ${sku} did not return valid data. Reason: ${reason}`);
-        return { success: false, sku: sku, reason: reason };
-    } catch (error) {
-        console.error(`[LOG] [List API] Error fetching inventory for SKU ${sku}:`, error.message);
-        return { success: false, sku: sku, reason: error.message };
     }
+
+    // 如果循环完成都没有找到匹配的SKU
+    const finalReason = `All ${LIST_API_URLS.length} API attempts failed to find a matching SKU.`;
+    console.error(`[LOG] [List API] ${finalReason}`);
+    return { success: false, sku: sku, reason: finalReason };
 }
 
 async function fetchInventoryFromDetailsAPI(productId, sku, token) {
