@@ -10,7 +10,7 @@ function getLocalDateForDb() {
     return `${year}-${month}-${day}`;
 }
 
-const LIST_API_URL = 'https://westmonth.com/shop_api/products/load_list?sort_mode=2&page=1&indistinct=';
+const LIST_API_URL = 'https://westmonth.com/shop_api/products/load_list?sort_mode=2&page=1&sku=';
 const DETAILS_API_URL = 'https://westmonth.com/shop_api/products/detail?product_id=';
 
 function formatProductData(apiData) {

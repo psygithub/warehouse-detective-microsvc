@@ -18,7 +18,61 @@
         }
         
         await loadLatestPivotData();
+
+        const exportBtn = document.getElementById('export-pivot-table-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', exportPivotTableToCSV);
+        }
     };
+
+    async function exportPivotTableToCSV() {
+        try {
+            // 1. Fetch all data from the API by requesting page 1 with a very large limit
+            const allData = await apiRequest(`/api/inventory/pivot-history?page=1&limit=9999`);
+            
+            if (!allData || !allData.rows || allData.rows.length === 0) {
+                alert('没有数据可导出。');
+                return;
+            }
+
+            const exportColumns = allData.columns;
+            const exportRows = allData.rows;
+
+            // 2. Generate CSV content
+            const csvHeader = exportColumns.map(col => `"${String(col).replace(/"/g, '""')}"`).join(',');
+
+            const csvRows = exportRows.map(row => {
+                return exportColumns.map(col => {
+                    const value = row[col] !== null && row[col] !== undefined ? row[col] : '';
+                    return `"${String(value).replace(/"/g, '""')}"`;
+                }).join(',');
+            });
+
+            const csvContent = [csvHeader, ...csvRows].join('\n');
+
+            // 3. Create and trigger download
+            const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const fileName = `库存数据${year}${month}${day}.csv`;
+
+            link.setAttribute('href', url);
+            link.setAttribute('download', fileName);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+        } catch (error) {
+            console.error('导出CSV失败:', error);
+            alert(`导出失败: ${error.message}`);
+        }
+    }
 
     async function loadLatestPivotData(page = 1) {
         currentPage = page;
