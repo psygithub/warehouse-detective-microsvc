@@ -269,10 +269,14 @@ async function fetchSingleSkuById(skuId, token) {
 }
 
 async function addOrUpdateTrackedSkusInBatch(skus, token) {
+    console.log(`[LOG] [Batch Add] Starting batch add for ${skus.length} SKUs:`, skus);
     const existingSkus = new Set(db.getTrackedSkus().map(s => s.sku));
     const newSkus = skus.filter(s => !existingSkus.has(s));
 
+    console.log(`[LOG] [Batch Add] Found ${newSkus.length} new SKUs to process:`, newSkus);
+
     if (newSkus.length === 0) {
+        console.log('[LOG] [Batch Add] No new SKUs to add. Exiting.');
         return { newSkusCount: 0, failedSkus: [] };
     }
 
@@ -282,6 +286,11 @@ async function addOrUpdateTrackedSkusInBatch(skus, token) {
     const successfulFetches = results.filter(r => r.success).map(r => r.data);
     const failedSkus = results.filter(r => !r.success);
 
+    console.log(`[LOG] [Batch Add] API fetch results: ${successfulFetches.length} successful, ${failedSkus.length} failed.`);
+    if (failedSkus.length > 0) {
+        console.log('[LOG] [Batch Add] Failed SKUs:', failedSkus);
+    }
+
     if (successfulFetches.length > 0) {
         const skusToAdd = successfulFetches.map(productData => ({
             sku: productData.product_sku,
@@ -290,9 +299,11 @@ async function addOrUpdateTrackedSkusInBatch(skus, token) {
             product_sku_id: productData.product_sku_id,
             product_image: productData.product_image,
         }));
+        console.log(`[LOG] [Batch Add] Bulk inserting ${skusToAdd.length} new SKUs into the database.`);
         db.addTrackedSkusBulk(skusToAdd);
 
         const recordDate = getLocalDateForDb();
+        console.log(`[LOG] [Batch Add] Saving inventory records for ${successfulFetches.length} SKUs for date: ${recordDate}`);
         for (const productData of successfulFetches) {
             const trackedSku = db.getTrackedSkuBySku(productData.product_sku);
             if (trackedSku) {
@@ -309,11 +320,15 @@ async function addOrUpdateTrackedSkusInBatch(skus, token) {
                 };
                 db.saveInventoryRecord(summaryRecord);
                 await _saveRegionalInventoryRecords(trackedSku, productData, recordDate);
+            } else {
+                console.warn(`[LOG] [Batch Add] Could not find tracked SKU for ${productData.product_sku} after bulk add. Skipping inventory record save.`);
             }
         }
     }
 
-    return { newSkusCount: successfulFetches.length, failedSkus };
+    const returnValue = { newSkusCount: successfulFetches.length, failedSkus };
+    console.log('[LOG] [Batch Add] Batch process finished. Returning:', returnValue);
+    return returnValue;
 }
 
 module.exports = {
