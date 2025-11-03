@@ -10,8 +10,8 @@ function getLocalDateForDb() {
     return `${year}-${month}-${day}`;
 }
 const LIST_API_URLS = [
-    'https://westmonth.com/shop_api/products/load_list?sort_mode=2&page=1&indistinct=',
-    'https://westmonth.com/shop_api/products/load_list?sort_mode=2&page=1&sku='
+    'https://westmonth.com/shop_api/products/load_list?indistinct=',
+    'https://api-x.westmonth.com/product-center/shop/products/load-list?indistinct='
 ];
 const DETAILS_API_URL = 'https://westmonth.com/shop_api/products/detail?product_id=';
 
@@ -34,15 +34,16 @@ function formatProductData(apiData) {
 async function fetchInventoryFromListAPI(sku, token) {
     const headers = {
         'Authorization': `Bearer ${token}`,
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 1.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome',
         'Accept': 'application/json, text/plain, */*',
     };
 
     console.log(`[LOG] [List API] Starting to fetch inventory for SKU: ${sku} using up to ${LIST_API_URLS.length} URLs.`);
+    const encodedSku = encodeURIComponent(sku);
 
     for (let i = 0; i < LIST_API_URLS.length; i++) {
         const baseUrl = LIST_API_URLS[i];
-        const url = `${baseUrl}${sku}`;
+        const url = `${baseUrl}${encodedSku}`;
         console.log(`[LOG] [List API] Attempt #${i + 1}: Requesting URL: ${url}`);
 
         try {
