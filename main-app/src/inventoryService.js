@@ -1,5 +1,6 @@
 const db = require('./db_sqlite');
 const fetch = require('node-fetch'); // 使用 node-fetch
+const TIME_OUT=10*1000; // 10秒超时
 
 // 辅助函数：生成符合数据库格式的本地日期 (YYYY-MM-DD)
 function getLocalDateForDb() {
@@ -47,7 +48,11 @@ async function fetchInventoryFromListAPI(sku, token) {
         console.log(`[LOG] [List API] Attempt #${i + 1}: Requesting URL: ${url}`);
 
         try {
-            const response = await fetch(url, { headers });
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), TIME_OUT); // 10秒超时
+            const response = await fetch(url, { headers, signal: controller.signal });
+            clearTimeout(timeoutId);
+
             const responseText = await response.text();
             
             if (!response.ok) {
@@ -94,7 +99,11 @@ async function fetchInventoryFromDetailsAPI(productId, sku, token) {
     console.log(`[LOG] [Details API] Request URL: ${url}`);
 
     try {
-        const response = await fetch(url, { headers });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), TIME_OUT); // 10秒超时
+        const response = await fetch(url, { headers, signal: controller.signal });
+        clearTimeout(timeoutId);
+
         const responseText = await response.text();
 
         if (!response.ok) {
