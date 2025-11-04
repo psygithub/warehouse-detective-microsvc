@@ -40,6 +40,13 @@ async function runInventoryAnalysis(trackedSkuId = null) {
 
             // 改进消耗量计算逻辑，以正确处理周期内的补货情况
             const firstRecord = regionHistory[0];
+
+            // 对于预警分析，跳过中国区
+            if (firstRecord.region_name === '中国') {
+                console.log(`跳过中国区的分析: SKU ${sku.sku}`);
+                continue;
+            }
+
             const lastRecord = regionHistory[regionHistory.length - 1];
             const days = (new Date(lastRecord.record_date) - new Date(firstRecord.record_date)) / (1000 * 60 * 60 * 24);
 
