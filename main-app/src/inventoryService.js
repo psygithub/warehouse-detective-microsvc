@@ -39,7 +39,7 @@ async function fetchInventoryFromListAPI(sku, token) {
         'Accept': 'application/json, text/plain, */*',
     };
 
-    console.log(`[LOG] [List API] Starting to fetch inventory for SKU: ${sku} using up to ${LIST_API_URLS.length} URLs.`);
+    console.log(`[LOG] [List API] Starting fetch. SKU: ${sku}`);
     const encodedSku = encodeURIComponent(sku);
 
     for (let i = 0; i < LIST_API_URLS.length; i++) {
@@ -50,7 +50,7 @@ async function fetchInventoryFromListAPI(sku, token) {
 
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), TIME_OUT); // 10秒超时
+            const timeoutId = setTimeout(() => controller.abort(), TIME_OUT);
             const response = await fetch(url, { headers, signal: controller.signal });
             clearTimeout(timeoutId);
 
@@ -66,32 +66,28 @@ async function fetchInventoryFromListAPI(sku, token) {
             if (responseData && responseData.status === 'success' && responseData.data.data.length > 0) {
                 const productData = responseData.data.data[0];
 
-                // 关键验证：检查返回的SKU是否与请求的SKU完全匹配
                 if (productData.product_sku === sku) {
                     console.log(`[LOG] [List API] Attempt #${i + 1} SUCCEEDED. Found matching SKU: ${sku}.`);
                     const formattedData = formatProductData(productData);
-                    console.log(`[LOG] [List API] Formatted data for SKU ${sku}:`, formattedData);
+                    console.log(`[LOG] [List API] Returning formatted data for SKU ${sku}:`, formattedData);
                     return { success: true, data: formattedData };
                 } else {
                     console.warn(`[LOG] [List API] Attempt #${i + 1} found a mismatched SKU. Requested: ${sku}, Got: ${productData.product_sku}.`);
-                    // 继续尝试下一个URL，因为这个结果不准确
                 }
             } else {
                 console.log(`[LOG] [List API] Attempt #${i + 1} did not return any product data.`);
             }
         } catch (error) {
             console.error(`[LOG] [List API] Attempt #${i + 1} threw an error:`, error.message);
-            // 继续尝试下一个URL
         }
     }
 
-    // 如果循环完成都没有找到匹配的SKU
     const finalReason = `All ${LIST_API_URLS.length} API attempts failed to find a matching SKU.`;
     console.error(`[LOG] [List API] ${finalReason}`);
     return { success: false, sku: sku, reason: finalReason };
 }
 
-async function fetchInventoryFromListAPI(productId, sku, token) {
+async function fetchInventoryFromDetailsAPI(productId, sku, token) {
     const url = `${DETAILS_API_URL}${productId}`;
     const headers = {
         'Authorization': `Bearer ${token}`,
@@ -99,13 +95,13 @@ async function fetchInventoryFromListAPI(productId, sku, token) {
         'Accept': 'application/json, text/plain, */*',
     };
 
-    console.log(`[LOG] [Details API] Starting to fetch inventory for SKU: ${sku} (Product ID: ${productId})`);
+    console.log(`[LOG] [Details API] Starting fetch. Product ID: ${productId}, SKU: ${sku}`);
     console.log(`[LOG] [Details API] Request URL: ${url}`);
     console.log(`[LOG] [Details API] Request headers:`, headers);
 
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), TIME_OUT); // 10秒超时
+        const timeoutId = setTimeout(() => controller.abort(), TIME_OUT);
         const response = await fetch(url, { headers, signal: controller.signal });
         clearTimeout(timeoutId);
 
@@ -122,22 +118,21 @@ async function fetchInventoryFromListAPI(productId, sku, token) {
             const skuDetails = productDetails.skus.find(s => s.sku === sku);
 
             if (skuDetails) {
-                // 映射数据结构以匹配 formatProductData 的期望
                 const mappedData = {
                     product_sku_id: skuDetails.id,
                     product_id: productDetails.id,
                     product_sku: skuDetails.sku,
                     product_name: productDetails.name,
-                    qty: skuDetails.quantity, // 使用 quantity 字段
-                    month_sale: parseInt(productDetails.month_sale, 10) || 0, // 从主产品信息中获取
-                    product_sales: 0, // 详情API中没有此字段
+                    qty: skuDetails.quantity,
+                    month_sale: parseInt(productDetails.month_sale, 10) || 0,
+                    product_sales: 0,
                     delivery_regions: skuDetails.delivery_regions,
                     product_image: skuDetails.images.length > 0 ? skuDetails.images[0].thumb : null,
-                    raw_data: skuDetails, // 保存原始的SKU详情
+                    raw_data: skuDetails,
                 };
-                console.log(`[LOG] [Details API] Successfully fetched inventory for SKU: ${sku}.`);
+                console.log(`[LOG] [Details API] Successfully mapped data for SKU: ${sku}.`);
                 const formattedData = formatProductData(mappedData);
-                console.log(`[LOG] [Details API] Formatted data for SKU ${sku}:`, formattedData);
+                console.log(`[LOG] [Details API] Returning formatted data for SKU ${sku}:`, formattedData);
                 return { success: true, data: formattedData };
             }
         }
@@ -155,15 +150,12 @@ async function fetchInventoryFromAPI(sku, token) {
     const trackedSku = db.getTrackedSkuBySku(sku);
 
     if (trackedSku && trackedSku.product_id) {
-        // 如果SKU已存在且有product_id，调用详情API
         return await fetchInventoryFromDetailsAPI(trackedSku.product_id, sku, token);
     } else {
-        // 否则，调用列表API
         return await fetchInventoryFromListAPI(sku, token);
     }
 }
 
-// 新增的私有函数，用于处理区域库存记录的保存
 async function _saveRegionalInventoryRecords(trackedSku, productData, recordDate) {
     let deliveryRegions = productData.delivery_regions;
     if (typeof deliveryRegions === 'string') {
@@ -197,14 +189,12 @@ async function _saveRegionalInventoryRecords(trackedSku, productData, recordDate
     }
 }
 
-// 统一的核心函数，用于获取并保存单个已跟踪SKU的库存数据
 async function _fetchAndSaveInventoryForTrackedSku(trackedSku, token) {
     const result = await fetchInventoryFromAPI(trackedSku.sku, token);
     if (result.success) {
         const productData = result.data;
         const recordDate = getLocalDateForDb();
 
-        // 保存主库存记录
         const summaryRecord = {
             tracked_sku_id: trackedSku.id,
             sku: trackedSku.sku,
@@ -218,7 +208,6 @@ async function _fetchAndSaveInventoryForTrackedSku(trackedSku, token) {
         };
         db.saveInventoryRecord(summaryRecord);
 
-        // 保存区域库存记录
         await _saveRegionalInventoryRecords(trackedSku, productData, recordDate);
         
         return { success: true, sku: trackedSku.sku, name: productData.product_name, qty: productData.qty };
@@ -298,7 +287,6 @@ async function fetchSingleSkuById(skuId, token) {
     if (!sku) {
         throw new Error(`SKU with ID ${skuId} not found.`);
     }
-    // 完全委托给新的核心函数
     return await _fetchAndSaveInventoryForTrackedSku(sku, token);
 }
 
@@ -337,7 +325,6 @@ async function addOrUpdateTrackedSkusInBatch(skus, token) {
         console.log('[LOG] [Batch Add] Data to be bulk inserted:', skusToAdd);
         db.addTrackedSkusBulk(skusToAdd);
 
-        // 优化：在批量插入后，一次性获取所有相关的 tracked_sku 记录
         const skuStrings = successfulFetches.map(pd => pd.product_sku);
         const trackedSkusFromDb = db.getTrackedSkusBySkuNames(skuStrings);
         const trackedSkusMap = trackedSkusFromDb.reduce((map, sku) => {
@@ -350,7 +337,7 @@ async function addOrUpdateTrackedSkusInBatch(skus, token) {
         const recordDate = getLocalDateForDb();
         console.log(`[LOG] [Batch Add] Saving inventory records for ${successfulFetches.length} SKUs for date: ${recordDate}`);
         for (const productData of successfulFetches) {
-            const trackedSku = trackedSkusMap[productData.product_sku]; // 从 map 中高效查找
+            const trackedSku = trackedSkusMap[productData.product_sku];
             if (trackedSku) {
                 const summaryRecord = {
                     tracked_sku_id: trackedSku.id,
