@@ -46,6 +46,7 @@ async function fetchInventoryFromListAPI(sku, token) {
         const baseUrl = LIST_API_URLS[i];
         const url = `${baseUrl}${encodedSku}`;
         console.log(`[LOG] [List API] Attempt #${i + 1}: Requesting URL: ${url}`);
+        console.log(`[LOG] [List API] Request headers:`, headers);
 
         try {
             const controller = new AbortController();
@@ -61,13 +62,16 @@ async function fetchInventoryFromListAPI(sku, token) {
             }
 
             const responseData = JSON.parse(responseText);
+            console.log(`[LOG] [List API] Attempt #${i + 1} Parsed response data for SKU ${sku}:`, responseData);
             if (responseData && responseData.status === 'success' && responseData.data.data.length > 0) {
                 const productData = responseData.data.data[0];
 
                 // 关键验证：检查返回的SKU是否与请求的SKU完全匹配
                 if (productData.product_sku === sku) {
                     console.log(`[LOG] [List API] Attempt #${i + 1} SUCCEEDED. Found matching SKU: ${sku}.`);
-                    return { success: true, data: formatProductData(productData) };
+                    const formattedData = formatProductData(productData);
+                    console.log(`[LOG] [List API] Formatted data for SKU ${sku}:`, formattedData);
+                    return { success: true, data: formattedData };
                 } else {
                     console.warn(`[LOG] [List API] Attempt #${i + 1} found a mismatched SKU. Requested: ${sku}, Got: ${productData.product_sku}.`);
                     // 继续尝试下一个URL，因为这个结果不准确
@@ -87,7 +91,7 @@ async function fetchInventoryFromListAPI(sku, token) {
     return { success: false, sku: sku, reason: finalReason };
 }
 
-async function fetchInventoryFromDetailsAPI(productId, sku, token) {
+async function fetchInventoryFromListAPI(productId, sku, token) {
     const url = `${DETAILS_API_URL}${productId}`;
     const headers = {
         'Authorization': `Bearer ${token}`,
@@ -97,6 +101,7 @@ async function fetchInventoryFromDetailsAPI(productId, sku, token) {
 
     console.log(`[LOG] [Details API] Starting to fetch inventory for SKU: ${sku} (Product ID: ${productId})`);
     console.log(`[LOG] [Details API] Request URL: ${url}`);
+    console.log(`[LOG] [Details API] Request headers:`, headers);
 
     try {
         const controller = new AbortController();
@@ -111,6 +116,7 @@ async function fetchInventoryFromDetailsAPI(productId, sku, token) {
         }
 
         const responseData = JSON.parse(responseText);
+        console.log(`[LOG] [Details API] Parsed response data for SKU ${sku}:`, responseData);
         if (responseData && responseData.status === 'success' && responseData.data) {
             const productDetails = responseData.data;
             const skuDetails = productDetails.skus.find(s => s.sku === sku);
@@ -130,7 +136,9 @@ async function fetchInventoryFromDetailsAPI(productId, sku, token) {
                     raw_data: skuDetails, // 保存原始的SKU详情
                 };
                 console.log(`[LOG] [Details API] Successfully fetched inventory for SKU: ${sku}.`);
-                return { success: true, data: formatProductData(mappedData) };
+                const formattedData = formatProductData(mappedData);
+                console.log(`[LOG] [Details API] Formatted data for SKU ${sku}:`, formattedData);
+                return { success: true, data: formattedData };
             }
         }
         
