@@ -634,16 +634,23 @@ function getActiveAlerts(limit = 100) {
     return result.items;
 }
 
-function getActiveAlertsPaginated({ page = 1, limit = 50 }) {
+function getActiveAlertsPaginated({ page = 1, limit = 50, region = null }) {
     const offset = (page - 1) * limit;
+    let whereClause = "WHERE status = 'ACTIVE'";
+    const params = [];
+
+    if (region) {
+        whereClause += " AND region_name LIKE ?";
+        params.push(`%${region}%`);
+    }
 
     // 首先，获取总记录数
-    const totalStmt = db.prepare("SELECT COUNT(*) as total FROM product_alerts WHERE status = 'ACTIVE'");
-    const { total } = totalStmt.get();
+    const totalStmt = db.prepare(`SELECT COUNT(*) as total FROM product_alerts ${whereClause}`);
+    const { total } = totalStmt.get(...params);
 
     // 然后，获取分页后的数据
-    const itemsStmt = db.prepare("SELECT * FROM product_alerts WHERE status = 'ACTIVE' ORDER BY updated_at DESC, created_at DESC, alert_level DESC LIMIT ? OFFSET ?");
-    const items = itemsStmt.all(limit, offset);
+    const itemsStmt = db.prepare(`SELECT * FROM product_alerts ${whereClause} ORDER BY updated_at DESC, created_at DESC, alert_level DESC LIMIT ? OFFSET ?`);
+    const items = itemsStmt.all(...params, limit, offset);
 
     return {
         items,

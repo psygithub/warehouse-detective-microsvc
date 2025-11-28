@@ -8,8 +8,15 @@ window.loadAlerts = async function(page = 1) {
     try {
         currentAlertsPage = page;
         // Read the value from the select dropdown each time
-        alertsPerPage = parseInt(document.getElementById('alerts-rows-per-page-select').value, 10);
-        const response = await apiRequest(`/api/inventory/alerts?page=${page}&limit=${alertsPerPage}`);
+        const limitSelect = document.getElementById('alerts-rows-per-page-select');
+        alertsPerPage = limitSelect ? parseInt(limitSelect.value, 10) : 50;
+        
+        let url = `/api/inventory/alerts?page=${page}&limit=${alertsPerPage}`;
+        if (currentAlertRegion) {
+            url += `&region=${encodeURIComponent(currentAlertRegion)}`;
+        }
+
+        const response = await apiRequest(url);
         if (response && response.items) {
             displayAlerts(response.items);
             renderAlertsPagination(response.total);
@@ -27,6 +34,7 @@ window.loadAlerts = async function(page = 1) {
 if (typeof window.dashboardScriptLoaded === 'undefined') {
     var currentAlertsPage = 1;
     var alertsPerPage = 50; // Default value
+    var currentAlertRegion = null; // 当前选中的区域
     window.dashboardScriptLoaded = true;
 }
 
@@ -104,6 +112,52 @@ window.sectionInitializers.dashboard = async () => {
     }
 };
 
+const regionShortNameMap = {
+    '菲律宾': '菲', '马来西亚': '马', '越南': '越', '泰国': '泰',
+    '新加坡': '新', '台湾': '台', '美国': '美', '墨西哥': '墨',
+    '欧洲': '欧', '日本': '日', '加拿大': '加', '英国': '英',
+    '澳大利亚': '澳', '俄罗斯': '俄', '韩国': '韩', '印度尼西亚': '印',
+    '巴西': '巴', '智利': '智', '哥伦比亚': '哥'
+};
+
+window.switchAlertTab = function(region) {
+    currentAlertRegion = region || null;
+    
+    document.querySelectorAll('#alertTabs .nav-link').forEach(link => {
+        link.classList.remove('active');
+        
+        // 提取该 Tab 对应的区域名
+        let tabRegion = '';
+        const onclickAttr = link.getAttribute('onclick');
+        if (onclickAttr) {
+            const match = onclickAttr.match(/'(.*)'/);
+            if (match) tabRegion = match[1];
+        }
+
+        const isTarget = (region === '' && tabRegion === '') || (region !== '' && tabRegion === region);
+        
+        if (isTarget) {
+            link.classList.add('active');
+            // 激活时显示全名 (除了默认 Tab)
+            if (tabRegion) link.textContent = tabRegion;
+        } else {
+            // 非激活时显示简称
+            if (tabRegion && regionShortNameMap[tabRegion]) {
+                link.textContent = regionShortNameMap[tabRegion];
+            }
+        }
+    });
+
+    // 控制表头“区域”列的显示/隐藏
+    // 假设表格在 .table-container 下
+    const regionTh = document.querySelector('.table-container table thead th:nth-child(2)');
+    if (regionTh) {
+        regionTh.style.display = currentAlertRegion ? 'none' : '';
+    }
+
+    window.loadAlerts(1);
+}
+
 function displayAlerts(alerts) {
     const container = document.getElementById('alertsList');
     if (!container) return;
@@ -112,6 +166,8 @@ function displayAlerts(alerts) {
         container.innerHTML = '<tr><td colspan="5" class="text-center text-muted">暂无库存预警</td></tr>';
         return;
     }
+
+    const isRegionHidden = !!currentAlertRegion;
 
     let html = '';
     alerts.forEach((alert, index) => {
@@ -143,7 +199,7 @@ function displayAlerts(alerts) {
         html += `
             <tr class="${rowClass}">
                 <td>${alert.sku}</td>
-                <td>${alert.region_name}</td>
+                <td style="${isRegionHidden ? 'display:none;' : ''}">${alert.region_name}</td>
                 <td>${getBadgeForLevel(alert.alert_level)}</td>
                 <td>${consumptionDetail}</td>
                 <td>${new Date(alert.updated_at).toLocaleString()}</td>

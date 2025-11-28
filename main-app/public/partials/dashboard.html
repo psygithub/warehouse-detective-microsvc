@@ -160,8 +160,31 @@
 
 <!-- 库存预警 -->
 <div class="card mt-3 d-flex flex-column" style="flex-grow: 1; min-height: 0;">
-    <div class="card-header bg-danger text-white">
-        <h5><i class="fas fa-exclamation-triangle me-2"></i>库存预警列表</h5>
+    <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs" id="alertTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-sku" data-region="" onclick="switchAlertTab('')">SKU</button>
+            </li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('菲律宾')">菲</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('马来西亚')">马</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('越南')">越</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('泰国')">泰</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('新加坡')">新</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('台湾')">台</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('美国')">美</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('墨西哥')">墨</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('欧洲')">欧</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('日本')">日</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('加拿大')">加</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('英国')">英</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('澳大利亚')">澳</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('俄罗斯')">俄</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('韩国')">韩</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('印度尼西亚')">印</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('巴西')">巴</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('智利')">智</button></li>
+            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('哥伦比亚')">哥</button></li>
+        </ul>
     </div>
     <div class="card-body d-flex flex-column" style="flex-grow: 1; min-height: 0; padding: 0;">
         <div class="table-container" style="flex-grow: 1; overflow-y: auto;">

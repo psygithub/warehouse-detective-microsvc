@@ -229,10 +229,11 @@ router.post('/system-configs', (req, res) => {
 router.get('/alerts', (req, res) => {
     console.log(`[API Entry] GET /api/inventory/alerts`);
     try {
-        const { page = 1, limit = 50 } = req.query;
+        const { page = 1, limit = 50, region } = req.query;
         const paginatedAlerts = database.getActiveAlertsPaginated({
             page: parseInt(page),
-            limit: parseInt(limit)
+            limit: parseInt(limit),
+            region: region || null
         });
         res.json(paginatedAlerts);
     } catch (error) {
