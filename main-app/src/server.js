@@ -13,8 +13,12 @@ const database = require('./db_sqlite');
 const auth = require('./auth');
 // const WarehouseDetective = require('./main'); // No longer needed
 const inventoryService = require('./inventoryService');
+const orderService = require('./orderService');
 const analysisService = require('./analysisService');
 const fetch = require('node-fetch');
+const { getStatusDesc } = require('./orderStatus');
+const { url } = require('inspector');
+
 
 class WebServer {
   constructor() {
@@ -58,12 +62,13 @@ class WebServer {
     }
   }
 
-  async makeAuthenticatedRequest(url, options = {}, maxRetries = 2) {
+  async makeAuthenticatedRequest(url, method='GET', options = {}, maxRetries = 2) {
     let authInfo = await this.getXizhiyueAuthInfo();
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         const requestOptions = {
           ...options,
+          method: method,
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             'Accept': 'application/json',
@@ -114,6 +119,7 @@ class WebServer {
     this.setupScheduleRoutes();
     this.setupFetchXizhiyueData();
     this.setupInventoryRoutes();
+    this.setupOrderRoutes();
     this.setupUserSkuRoutes();
     this.setupHealthCheckRoutes(); // 添加健康检查路由
     this.setupPageRoutes();
@@ -575,6 +581,20 @@ class WebServer {
             res.status(500).json({ error: error.message });
         }
     });
+
+    this.app.post('/api/schedules/:id/run', auth.authenticateToken.bind(auth), async (req, res) => {
+        console.log(`[API Entry] POST /api/schedules/:id/run`);
+        try {
+            const scheduleId = parseInt(req.params.id);
+            const schedule = database.getScheduleById(scheduleId);
+            if (!schedule) return res.status(404).json({ error: '定时任务不存在' });
+
+            await this.executeTaskLogic(schedule, false, req.user.id);
+            res.json({ message: '任务已开始执行' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
   }
 
   setupHealthCheckRoutes() {
@@ -588,6 +608,47 @@ class WebServer {
 
   setupFetchXizhiyueData() {
     // ... (omitted for brevity)
+  }
+
+  setupOrderRoutes() {
+    this.app.get('/api/orders', auth.authenticateToken.bind(auth), async (req, res) => {
+        console.log(`[API Entry] GET /api/orders`);
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const pageSize = parseInt(req.query.limit) || 20;
+            
+            const authInfo = await this.getXizhiyueAuthInfo();
+            const orders = await orderService.getXizhiyueOrderList(
+                authInfo.token, 
+                page, 
+                pageSize
+            );
+            
+            res.json({
+                items: orders,
+                page: page,
+                limit: pageSize
+            });
+        } catch (error) {
+            console.error('获取订单列表失败:', error);
+            res.status(500).json({ error: '获取订单列表失败: ' + error.message });
+        }
+    });
+
+    this.app.post('/api/orders/check-and-notify', auth.authenticateToken.bind(auth), async (req, res) => {
+        console.log(`[API Entry] POST /api/orders/check-and-notify`);
+        try {
+            const authInfo = await this.getXizhiyueAuthInfo();
+            // 异步执行，不等待结果，避免前端超时
+            orderService.checkNewOrderAndSendNotice(authInfo.token).catch(err => {
+                console.error('后台检查订单通知失败:', err);
+            });
+            res.json({ message: '订单检查任务已触发，如有新订单将发送通知。' });
+        } catch (error) {
+            console.error('触发订单检查失败:', error);
+            res.status(500).json({ error: '触发订单检查失败: ' + error.message });
+        }
+    });
   }
 
   setupInventoryRoutes() {
@@ -997,8 +1058,51 @@ class WebServer {
     }
   }
 
-  // This method is no longer needed as the logic is now in playwright-service
-  // async executeTask(skus, regions) { ... }
+  async executeTaskLogic(schedule, isScheduled = true, overrideUserId = null) {
+    const startTime = new Date();
+    const triggerType = isScheduled ? '自动调度' : '手动触发';
+    console.log(`[任务开始] ${triggerType}任务 '${schedule.name}' (ID: ${schedule.id}) 已于 ${startTime.toLocaleString()} 开始执行。`);
+    
+    let status = 'failed';
+    let details = '';
+    
+    try {
+        let result;
+        const authInfo = await this.getXizhiyueAuthInfo();
+        switch (schedule.task_type) {
+            case 'run_analysis':
+                result = await analysisService.runInventoryAnalysis();
+                break;
+            case 'check_orders':
+                // 订单检查任务
+                await orderService.checkNewOrderAndSendNotice(authInfo.token);
+                result = { message: '订单检查完成' };
+                break;
+            case 'fetch_inventory':
+            default:
+                result = await inventoryService.fetchAndSaveAllTrackedSkus(authInfo.token);
+                break;
+        }
+        status = 'completed';
+        details = JSON.stringify(result);
+        console.log(`[${new Date().toLocaleString()}] Task ${schedule.name} completed successfully.`);
+    } catch (error) {
+        console.error(`[${new Date().toLocaleString()}] Error running task ${schedule.name}:`, error);
+        details = error.message;
+    } finally {
+        const config = (schedule.configId ? database.getConfigById(schedule.configId) : null) || {};
+        database.saveResult({
+            userId: overrideUserId || schedule.userId,
+            configId: schedule.configId || null,
+            skus: config.skus || [],
+            regions: config.regions || [],
+            results: details,
+            status: status,
+            isScheduled: isScheduled ? 1 : 0,
+            scheduleId: schedule.id
+        });
+    }
+  }
 
   startScheduledTask(schedule) {
     if (this.scheduledTasks.has(schedule.id)) {
@@ -1006,41 +1110,7 @@ class WebServer {
     }
     if (cronSvc.validate(schedule.cron)) {
         const task = cronSvc.schedule(schedule.cron, async () => {
-            const startTime = new Date();
-            console.log(`[定时任务开始] 任务 '${schedule.name}' (ID: ${schedule.id}) 已于 ${startTime.toLocaleString()} 开始执行。Cron: [${schedule.cron}]`);
-            let status = 'failed';
-            let details = '';
-            try {
-                let result;
-                switch (schedule.task_type) {
-                    case 'run_analysis':
-                        result = await analysisService.runInventoryAnalysis();
-                        break;
-                    case 'fetch_inventory':
-                    default:
-                        const authInfo = await this.getXizhiyueAuthInfo();
-                        result = await inventoryService.fetchAndSaveAllTrackedSkus(authInfo.token);
-                        break;
-                }
-                status = 'completed';
-                details = JSON.stringify(result);
-                console.log(`[${new Date().toLocaleString()}] Scheduled task ${schedule.name} completed successfully.`);
-            } catch (error) {
-                console.error(`[${new Date().toLocaleString()}] Error running scheduled task ${schedule.name}:`, error);
-                details = error.message;
-            } finally {
-                const config = (schedule.configId ? database.getConfigById(schedule.configId) : null) || {};
-                database.saveResult({
-                    userId: schedule.userId,
-                    configId: schedule.configId || null,
-                    skus: config.skus || [],
-                    regions: config.regions || [],
-                    results: details,
-                    status: status,
-                    isScheduled: 1,
-                    scheduleId: schedule.id
-                });
-            }
+            await this.executeTaskLogic(schedule, true);
         }, {
             timezone: "Asia/Shanghai"
         });

@@ -3,48 +3,17 @@
 </div>
 
 <div class="row">
-    <div class="col-lg-8">
-        <!-- 配置管理 -->
+    <div class="col-lg-12">
+        <!-- 定时任务管理 -->
         <div class="card mb-4">
-            <div class="card-header">
-                <h3>配置管理</h3>
-                <button class="btn btn-primary btn-sm" onclick="showConfigModal()">
-                    <i class="fas fa-plus me-2"></i>新建配置
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3>定时任务管理</h3>
+                <button class="btn btn-success btn-sm" onclick="showScheduleModal()">
+                    <i class="fas fa-plus me-2"></i>新建任务
                 </button>
             </div>
             <div class="card-body">
-                <div id="configsList">加载中...</div>
-            </div>
-        </div>
-
-        <!-- 定时查询库存 -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h3>定时查询库存</h3>
-            </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label for="inventory-cron-input" class="form-label">数据同步 Cron 表达式:</label>
-                    <input type="text" id="inventory-cron-input" class="form-control">
-                    <div class="form-text">
-                        示例: '0 2 * * *' (每天凌晨2点), '0 */6 * * *' (每6小时)
-                    </div>
-                </div>
-                <button class="btn btn-success" id="save-inventory-schedule-btn">保存</button>
-            </div>
-        </div>
-
-        <!-- 定时预警分析 -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h3>定时预警分析</h3>
-            </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label for="analysis-cron-input" class="form-label">预警分析 Cron 表达式:</label>
-                    <input type="text" id="analysis-cron-input" class="form-control">
-                </div>
-                <button class="btn btn-success" id="save-analysis-schedule-btn">保存</button>
+                <div id="schedulesList">加载中...</div>
             </div>
         </div>
 
@@ -60,95 +29,16 @@
             </div>
         </div>
     </div>
-    <div class="col-lg-4">
-        <!-- 任务执行 -->
-        <div class="card">
-            <div class="card-header">
-                <h5>任务执行</h5>
-            </div>
-            <div class="card-body">
-                <form id="quickTaskForm">
-                    <div class="mb-3">
-                        <label class="form-label">SKU列表</label>
-                        <textarea class="form-control" id="taskSkus" rows="3" placeholder="每行一个SKU"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">地区列表</label>
-                        <textarea class="form-control" id="taskRegions" rows="2" placeholder="每行一个地区，留空表示所有地区"></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-success w-100">
-                        <i class="fas fa-play me-2"></i>立即执行
-                    </button>
-                </form>
-                <hr>
-                <div class="mb-3">
-                    <label class="form-label">使用配置执行</label>
-                    <select class="form-select" id="configSelect">
-                        <option value="">选择配置...</option>
-                    </select>
-                </div>
-                <button type="button" class="btn btn-primary w-100" onclick="executeWithConfig()">
-                    <i class="fas fa-cogs me-2"></i>使用配置执行
-                </button>
-            </div>
-        </div>
-        <!-- 执行结果 -->
-        <div class="card mt-4" id="taskResultCard" style="display: none;">
-            <div class="card-header">
-                <h5>执行结果</h5>
-            </div>
-            <div class="card-body">
-                <div id="taskResult"></div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- 模态框容器 -->
 <div id="modal-container">
-    <!-- 配置模态框 -->
-    <div class="modal fade" id="configModal" tabindex="-1" aria-labelledby="configModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="configModalLabel">新建配置</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="configForm">
-                        <input type="hidden" id="configId">
-                        <div class="mb-3">
-                            <label for="configName" class="form-label">配置名称</label>
-                            <input type="text" class="form-control" id="configName" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="configSkus" class="form-label">SKU列表 (每行一个)</label>
-                            <textarea class="form-control" id="configSkus" rows="5" required></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="configRegions" class="form-label">地区列表 (每行一个)</label>
-                            <textarea class="form-control" id="configRegions" rows="3"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="configDescription" class="form-label">描述</label>
-                            <textarea class="form-control" id="configDescription" rows="2"></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
-                    <button type="button" class="btn btn-primary" onclick="saveConfig()">保存配置</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- 定时任务模态框 -->
     <div class="modal fade" id="scheduleModal" tabindex="-1" aria-labelledby="scheduleModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="scheduleModalLabel">新建定时任务</h5>
+                    <h5 class="modal-title" id="scheduleModalLabel">管理定时任务</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -159,24 +49,45 @@
                             <input type="text" class="form-control" id="scheduleName" required>
                         </div>
                         <div class="mb-3">
-                            <label for="scheduleConfigId" class="form-label">选择配置</label>
-                            <select class="form-select" id="scheduleConfigId" required></select>
+                            <label for="scheduleTaskType" class="form-label">任务类型</label>
+                            <select class="form-select" id="scheduleTaskType" required>
+                                <option value="fetch_inventory">库存查询</option>
+                                <option value="run_analysis">预警分析</option>
+                                <option value="check_orders">订单查询</option>
+                            </select>
                         </div>
                         <div class="mb-3">
-                            <label for="scheduleCron" class="form-label">Cron表达式</label>
-                            <input type="text" class="form-control" id="scheduleCron" required>
+                            <label for="scheduleCron" class="form-label">Cron 表达式</label>
+                            <input type="text" class="form-control" id="scheduleCron" placeholder="例如: 0 2 * * *" required>
+                            <div class="form-text">
+                                使用标准 Cron 格式。例如 <code>0 2 * * *</code> 表示每天凌晨2点执行。
+                            </div>
                         </div>
-                        <div class="form-check mb-3">
+                        <div class="form-check form-switch mb-3">
                             <input class="form-check-input" type="checkbox" id="scheduleActive" checked>
-                            <label class="form-check-label" for="scheduleActive">
-                                启用
-                            </label>
+                            <label class="form-check-label" for="scheduleActive">启用任务</label>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
                     <button type="button" class="btn btn-primary" onclick="saveSchedule()">保存任务</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule History Modal -->
+    <div class="modal fade" id="scheduleHistoryModal" tabindex="-1" aria-labelledby="scheduleHistoryModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="scheduleHistoryModalLabel">任务执行历史</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="scheduleHistoryBody">
+                    <!-- History content will be loaded here -->
                 </div>
             </div>
         </div>
