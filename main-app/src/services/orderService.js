@@ -1,4 +1,4 @@
-const { getStatusDesc, OrderStatus } = require('./orderStatus');
+const { getStatusDesc, OrderStatus } = require('../orderStatus');
 const fetch = require('node-fetch');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
@@ -52,7 +52,7 @@ async function getXizhiyueOrderList(token, page = 1, pageSize = 20) {
 
 function loadConfig() {
     try {
-        const configPath = path.join(__dirname, '../../config/config.json');
+        const configPath = path.join(__dirname, '../../../config/config.json');
         if (fs.existsSync(configPath)) {
             return JSON.parse(fs.readFileSync(configPath, 'utf8'));
         }

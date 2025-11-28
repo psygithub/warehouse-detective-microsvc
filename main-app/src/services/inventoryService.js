@@ -1,4 +1,4 @@
-const db = require('./db_sqlite');
+const db = require('../db_sqlite');
 const fetch = require('node-fetch'); // 使用 node-fetch
 const TIME_OUT=10*1000; // 10秒超时
 
