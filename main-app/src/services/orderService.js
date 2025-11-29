@@ -53,8 +53,13 @@ async function getXizhiyueOrderList(token, page = 1, pageSize = 20) {
 function loadConfig() {
     try {
         const configPath = path.join(__dirname, '../../../config/config.json');
+        console.log(`[DEBUG] 尝试加载配置文件路径: ${configPath}`);
         if (fs.existsSync(configPath)) {
-            return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            console.log(`[DEBUG] 配置文件加载成功`);
+            return config;
+        } else {
+            console.error(`[DEBUG] 配置文件不存在: ${configPath}`);
         }
     } catch (e) {
         console.error('加载配置文件失败:', e);
@@ -63,11 +68,13 @@ function loadConfig() {
 }
 
 async function sendOrderNotification(newOrders, toPayOrders) {
+    console.log('[DEBUG] 开始 sendOrderNotification');
     const config = loadConfig();
     if (!config || !config.email) {
         console.error('邮件配置缺失，无法发送通知');
         return;
     }
+    console.log('[DEBUG] 邮件配置已获取，准备创建 transporter');
 
     const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || config.email.smtpHost,
@@ -91,12 +98,14 @@ async function sendOrderNotification(newOrders, toPayOrders) {
         html: htmlContent
     };
 
+    console.log(`[DEBUG] 准备发送邮件给: ${config.email.to}`);
     try {
         const info = await transporter.sendMail(mailOptions);
         console.log('订单通知邮件已发送:', info.messageId);
     } catch (error) {
         console.error('发送订单通知邮件失败:', error);
     }
+    console.log('[DEBUG] sendOrderNotification 结束');
 }
 
 function generateOrderEmailHtml(newOrders, toPayOrders) {
