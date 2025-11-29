@@ -99,4 +99,17 @@ router.post('/:id/approve', auth.authenticateToken.bind(auth), async (req, res) 
     }
 });
 
+// 申请运单号
+router.post('/:id/apply-tracking', auth.authenticateToken.bind(auth), async (req, res) => {
+    try {
+        const orderId = req.params.id;
+        const authInfo = await xizhiyueClient.getAuthInfo();
+        const result = await orderService.applyTrackingNo(orderId, authInfo.token);
+        res.json(result);
+    } catch (error) {
+        console.error('申请运单号失败:', error);
+        res.status(500).json({ error: '申请运单号失败: ' + error.message });
+    }
+});
+
 module.exports = router;

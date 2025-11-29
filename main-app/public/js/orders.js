@@ -10,12 +10,13 @@ window.sectionInitializers.orders = function() {
 
 const OrderStatus = {
     NEED_PAY: 900,            // 待付款
-    PAID_PENDING_AUDIT: 100   // 已付款待审核
+    PAID_PENDING_AUDIT: 100,  // 已付款待审核
+    WAIT_PURCHASE: 200,       // 待采购
+    NO_TRACKING_NO: 301       // 未申请运单号
 };
 
 async function loadOrders() {
     const ordersList = document.getElementById('ordersList');
-    const toPayCountEl = document.getElementById('toPayCount');
     const newOrdersCountEl = document.getElementById('newOrdersCount');
     
     if (!ordersList) return;
@@ -38,10 +39,8 @@ async function loadOrders() {
         const data = await response.json();
         const targetOrders = data.items || [];
 
-        const toPayCount = targetOrders.filter(o => o.order_status === OrderStatus.NEED_PAY).length;
         const newOrdersCount = targetOrders.filter(o => o.order_status === OrderStatus.PAID_PENDING_AUDIT).length;
         
-        if (toPayCountEl) toPayCountEl.textContent = toPayCount;
         if (newOrdersCountEl) newOrdersCountEl.textContent = newOrdersCount;
 
         renderOrders(ordersList, targetOrders);
@@ -68,36 +67,47 @@ function renderOrders(container, orders) {
             const item = items[i] || {};
             
             let statusBadge = '';
-            if (order.order_status === OrderStatus.NEED_PAY) {
-                statusBadge = '<span class="badge bg-warning text-dark">待付款</span>';
-            } else if (order.order_status === OrderStatus.PAID_PENDING_AUDIT) {
+            if (order.order_status === OrderStatus.PAID_PENDING_AUDIT) {
                 statusBadge = '<span class="badge bg-primary">待审核</span>';
+            } else if (order.order_status === OrderStatus.WAIT_PURCHASE) {
+                statusBadge = '<span class="badge bg-info text-dark">待采购</span>';
             } else {
                 statusBadge = `<span class="badge bg-secondary">${order.order_status_desc || '未知'}</span>`;
             }
 
-            // 操作按钮：只在第一行显示（避免重复），且只针对待审核订单
+            // 操作按钮：只在第一行显示（避免重复）
             let actionButtons = '';
-            if (i === 0 && order.order_status === OrderStatus.PAID_PENDING_AUDIT) {
-                // 将 items 和 country 编码以便传递
-                const itemsData = encodeURIComponent(JSON.stringify(order.order_items));
-                const country = order.xy_country || '';
-                
+            if (i === 0) {
+                if (order.order_status === OrderStatus.PAID_PENDING_AUDIT) {
+                    // 将 items 和 country 编码以便传递
+                    const itemsData = encodeURIComponent(JSON.stringify(order.order_items));
+                    const country = order.xy_country || '';
+                    
+                    actionButtons = `
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-sm btn-info text-white" onclick="checkInventory('${order.global_order_no}', '${country}', '${itemsData}')">
+                                <i class="fas fa-search me-1"></i>查库存
+                            </button>
+                            <button class="btn btn-sm btn-success" onclick="approveOrder('${order.global_order_no}')">
+                                <i class="fas fa-check me-1"></i>审核通过
+                            </button>
+                        </div>
+                    `;
+            } else if (order.order_status === OrderStatus.WAIT_PURCHASE && order.order_sub_status === OrderStatus.NO_TRACKING_NO) {
                 actionButtons = `
                     <div class="d-grid gap-2">
-                        <button class="btn btn-sm btn-info text-white" onclick="checkInventory('${order.global_order_no}', '${country}', '${itemsData}')">
-                            <i class="fas fa-search me-1"></i>查库存
-                        </button>
-                        <button class="btn btn-sm btn-success" onclick="approveOrder('${order.global_order_no}')">
-                            <i class="fas fa-check me-1"></i>审核通过
+                        <button class="btn btn-sm btn-primary" onclick="applyTrackingNo('${order.global_order_no}')">
+                            <i class="fas fa-shipping-fast me-1"></i>申请运单号
                         </button>
                     </div>
                 `;
+            }
             }
 
             html += `
                 <tr>
                     <td>${statusBadge}</td>
+                    <td><span class="badge bg-light text-dark border">${order.order_sub_status_desc || '-'}</span></td>
                     <td><span class="fw-bold text-nowrap">${order.global_order_no}</span></td>
                     <td>${order.shop_name}</td>
                     <td>${order.country || '-'}</td>
@@ -239,5 +249,26 @@ async function approveOrder(orderId) {
     } catch (error) {
         console.error('审核失败:', error);
         alert('审核失败: ' + error.message);
+    }
+}
+
+async function applyTrackingNo(orderId) {
+    if (!confirm('确定要为该订单申请运单号吗？')) return;
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/orders/${orderId}/apply-tracking`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert(result.message || '申请成功');
+            loadOrders();
+        } else {
+            alert(result.message || '申请失败');
+        }
+    } catch (error) {
+        console.error('申请运单号失败:', error);
+        alert('申请运单号失败: ' + error.message);
     }
 }

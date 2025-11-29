@@ -42,6 +42,8 @@ async function getXizhiyueOrderList(token, page = 1, pageSize = 20) {
         country:order.country_code_desc,
         order_status: order.order_status,
         order_status_desc: getStatusDesc(order.order_status),
+        order_sub_status: order.order_sub_status,
+        order_sub_status_desc: getStatusDesc(order.order_sub_status),
         order_items: (order.order_items || []).map(item => ({
             ...item, // 保留原始的所有字段，防止漏掉
             picture_url: item.picture_url,
@@ -63,7 +65,7 @@ async function getPendingOrders(token) {
     const orders = await getXizhiyueOrderList(token, 1, 100);
     
     const pendingOrders = orders.filter(order => 
-        order.order_status === OrderStatus.NEED_PAY || 
+        order.order_status === OrderStatus.WAIT_PURCHASE || 
         order.order_status === OrderStatus.PAID_PENDING_AUDIT
     );
     
@@ -169,6 +171,7 @@ function generateOrderEmailHtml(newOrders, toPayOrders) {
                     <tr>
                         <th>订单号</th>
                         <th>店铺</th>
+                        <th>子状态</th>
                         <th>下单时间</th>
                         <th>金额</th>
                         <th>商品摘要</th>
@@ -185,6 +188,7 @@ function generateOrderEmailHtml(newOrders, toPayOrders) {
                 <tr>
                     <td>${order.global_order_no}</td>
                     <td>${order.shop_name}</td>
+                    <td>${order.order_sub_status_desc || '-'}</td>
                     <td>${order.place_order_time}</td>
                     <td class="amount">¥${order.amount}</td>
                     <td class="items">${itemsHtml}</td>
@@ -208,7 +212,7 @@ async function checkNewOrderAndSendNotice(token) {
         const orders = await getXizhiyueOrderList(token, 1, 20);
         
         const newOrders = orders.filter(order => order.order_status === OrderStatus.PAID_PENDING_AUDIT);
-        const toPayOrders = orders.filter(order => order.order_status === OrderStatus.NEED_PAY);
+        const toPayOrders = orders.filter(order => order.order_status === OrderStatus.WAIT_PURCHASE);
 
         if (newOrders.length > 0 || toPayOrders.length > 0) {
             console.log(`[NOTICE] 发现新订单: ${newOrders.length}, 待付款: ${toPayOrders.length}。准备发送通知...`);
@@ -282,13 +286,46 @@ async function checkOrderInventory(orderId) {
     return { success: false, message: "请使用新的 SKU 级别检查接口" };
 }
 
-// TODO: 实现审核通过逻辑
-async function approveOrder(orderId) {
-    console.log(`[TODO] approveOrder called for orderId: ${orderId}`);
-    return { 
-        success: true, 
-        message: `[TODO] 审核通过功能尚未实现 (Order: ${orderId})` 
+// 审核通过
+async function approveOrder(orderId, token) {
+    console.log(`[ApproveOrder] Approving orderId: ${orderId}`);
+    
+    // URL based on placeholder or user input
+    const url = `https://api.westmonth.com/erp/order/audit`;
+    
+    const body = {
+        global_order_no_list: [orderId]
     };
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        });
+
+        const responseText = await response.text();
+        console.log(`[ApproveOrder] Response: ${responseText}`);
+
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (e) {
+            return { success: false, message: `解析响应失败: ${responseText}` };
+        }
+
+        if (response.ok && result.code === 0) {
+            return { success: true, message: '审核通过成功', data: result.data };
+        } else {
+            return { success: false, message: `审核失败: ${result.message || '未知错误'}` };
+        }
+    } catch (error) {
+        console.error(`[ApproveOrder] Error:`, error);
+        return { success: false, message: `请求异常: ${error.message}` };
+    }
 }
 
 module.exports = {
@@ -297,5 +334,56 @@ module.exports = {
     checkNewOrderAndSendNotice,
     checkOrderInventory,
     checkSkuInventory,
-    approveOrder
+    approveOrder,
+    applyTrackingNo
 };
+
+// 申请运单号
+async function applyTrackingNo(orderId, token) {
+    console.log(`[ApplyTrackingNo] Applying tracking number for orderId: ${orderId}`);
+    
+    // API URL 由用户配置
+    const url = `https://api.westmonth.com/erp/order/apply-tacking-number`;
+    
+    // 请求体格式: 数组，包含订单信息对象
+    const body = [
+        {
+            "global_order_no": orderId,
+            "logistics_mode": 1,
+            "retry": 0,
+            "logistics_company_id": "",
+            "provider_code": null,
+            "shipping_allocate_type": null
+        }
+    ];
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        });
+
+        const responseText = await response.text();
+        console.log(`[ApplyTrackingNo] Response: ${responseText}`);
+
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (e) {
+            return { success: false, message: `解析响应失败: ${responseText}` };
+        }
+
+        if (response.ok && result.code === 0) {
+            return { success: true, message: '申请成功', data: result.data };
+        } else {
+            return { success: false, message: `申请失败: ${result.message || '未知错误'}` };
+        }
+    } catch (error) {
+        console.error(`[ApplyTrackingNo] Error:`, error);
+        return { success: false, message: `请求异常: ${error.message}` };
+    }
+}

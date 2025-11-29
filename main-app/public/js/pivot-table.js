@@ -6,6 +6,43 @@
     let sortableInstance = null;
 
     window.sectionInitializers = window.sectionInitializers || {};
+    window.renderPagination = function(containerId, total, currentPage, limit, callbackName) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const totalPages = Math.ceil(total / limit);
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let html = '<nav><ul class="pagination justify-content-center">';
+        
+        // Prev
+        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <button class="page-link" onclick="${callbackName}(${currentPage - 1})">上一页</button>
+        </li>`;
+
+        // Pages
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                    <button class="page-link" onclick="${callbackName}(${i})">${i}</button>
+                </li>`;
+            } else if (i === currentPage - 3 || i === currentPage + 3) {
+                 html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+
+        // Next
+        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <button class="page-link" onclick="${callbackName}(${currentPage + 1})">下一页</button>
+        </li>`;
+
+        html += '</ul></nav>';
+        container.innerHTML = html;
+    };
+
     window.sectionInitializers['pivot-table'] = async () => {
         window.loadPivotData = loadLatestPivotData; // Expose to global scope for pagination
         
