@@ -43,7 +43,7 @@ async function loadScheduleHistory() {
             historyList.innerHTML = history.map(item => `
                 <li class="list-group-item">
                     <strong>${new Date(item.createdAt).toLocaleString()}:</strong> 
-                    任务 <strong>${item.scheduleId}</strong> 完成, 状态: 
+                    任务 <strong>${item.scheduleName || '未知任务'}</strong> 完成, 状态: 
                     <span class="badge bg-${item.status === 'completed' ? 'success' : 'danger'}">${item.status}</span>.
                 </li>
             `).join('');

@@ -1,123 +1,80 @@
-// API请求封装
-async function apiRequest(url, method = 'GET', data = null) {
-    // Ensure token is available globally, defined in admin-main.js or user.html
-    if (typeof token === 'undefined' || !token) {
-        console.error('Authentication token is not available.');
-        // Redirect to login or handle error appropriately
-        window.location.href = '/login'; 
-        throw new Error('Token not found');
+// 工具函数
+
+// 显示 Toast 通知
+function showToast(message, type = 'info') {
+    const toastContainer = document.querySelector('.toast-container');
+    if (!toastContainer) {
+        // 创建容器
+        const container = document.createElement('div');
+        container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        container.style.zIndex = '1100';
+        document.body.appendChild(container);
     }
 
-    const baseUrl = window.location.origin;
-    const fullUrl = new URL(url, baseUrl).href;
+    const toastEl = document.createElement('div');
+    toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
+    toastEl.setAttribute('role', 'alert');
+    toastEl.setAttribute('aria-live', 'assertive');
+    toastEl.setAttribute('aria-atomic', 'true');
 
-    const options = {
-        method,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        }
-    };
+    toastEl.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    `;
 
-    if (data) {
-        options.body = JSON.stringify(data);
-    }
+    document.querySelector('.toast-container').appendChild(toastEl);
+    const toast = new bootstrap.Toast(toastEl);
+    toast.show();
 
-    const response = await fetch(fullUrl, options);
-
-    if (response.status === 401) {
-        console.log('API request authentication failed, logging out.');
-        // Ensure logout function is available globally
-        if (typeof logout === 'function') {
-            logout();
-        } else {
-            // Fallback if logout function is not defined
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
-        }
-        throw new Error('Session expired');
-    }
-
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Request failed');
-    }
-
-    const text = await response.text();
-    return text ? JSON.parse(text) : {};
+    // 自动移除 DOM
+    toastEl.addEventListener('hidden.bs.toast', () => {
+        toastEl.remove();
+    });
 }
 
-function getBadgeForLevel(level) {
-    switch (level) {
-        case 3: return '<span class="badge bg-danger ms-2">快速</span>';
-        case 2: return '<span class="badge bg-warning ms-2">中等</span>';
-        case 1: return '<span class="badge bg-info ms-2">一般</span>';
-        default: return '';
+// 格式化日期
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+// 通用确认框 (简单的 window.confirm 封装，未来可以用 Modal 替换)
+function confirmAction(message) {
+    return window.confirm(message);
+}
+
+// 显示公共信息模态框
+function showCommonModal(title, content) {
+    const modalEl = document.getElementById('commonInfoModal');
+    const titleEl = document.getElementById('commonInfoModalLabel');
+    const bodyEl = document.getElementById('commonInfoModalBody');
+
+    if (modalEl && titleEl && bodyEl) {
+        titleEl.textContent = title;
+        bodyEl.innerHTML = content;
+        
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    } else {
+        console.error('Common Info Modal element not found in DOM.');
+        alert(title + '\n\n' + content.replace(/<br>/g, '\n').replace(/<\/?[^>]+(>|$)/g, ""));
     }
 }
 
-/**
- * 渲染分页控件
- * @param {string} containerId - 分页控件的容器ID
- * @param {number} totalItems - 总项目数
- * @param {number} currentPage - 当前页码
- * @param {number} itemsPerPage - 每页显示的项目数
- * @param {string} callbackFunction - 点击分页链接时调用的函数名 (例如 'loadAlerts')
- */
-(function() {
-    function renderPagination(containerId, totalItems, currentPage, itemsPerPage, callbackFunction) {
-        const paginationContainer = document.getElementById(containerId);
-        if (!paginationContainer) {
-            console.error(`Pagination container with id ${containerId} not found.`);
-            return;
-        }
-
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    paginationContainer.innerHTML = '';
-
-    if (totalPages < 1) {
-        paginationContainer.innerHTML = '<ul class="pagination pagination-sm"><li class="page-item disabled"><span class="page-link">暂无数据</span></li></ul>';
-        return;
-    }
-
-    let paginationHTML = `<ul class="pagination pagination-sm">`;
-
-    // 上一页
-    const prevDisabled = currentPage === 1 ? 'disabled' : '';
-    paginationHTML += `<li class="page-item ${prevDisabled}"><a class="page-link" href="#" onclick="event.preventDefault(); ${callbackFunction}(${currentPage - 1})">上一页</a></li>`;
-
-    // 页面链接逻辑
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, currentPage + 2);
-
-    if (startPage > 1) {
-        paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); ${callbackFunction}(1)">1</a></li>`;
-        if (startPage > 2) {
-            paginationHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-        }
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-        const activeClass = i === currentPage ? 'active' : '';
-        paginationHTML += `<li class="page-item ${activeClass}"><a class="page-link" href="#" onclick="event.preventDefault(); ${callbackFunction}(${i})">${i}</a></li>`;
-    }
-
-    if (endPage < totalPages) {
-        if (endPage < totalPages - 1) {
-            paginationHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-        }
-        paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="event.preventDefault(); ${callbackFunction}(${totalPages})">${totalPages}</a></li>`;
-    }
-
-    // 下一页
-    const nextDisabled = currentPage === totalPages ? 'disabled' : '';
-    paginationHTML += `<li class="page-item ${nextDisabled}"><a class="page-link" href="#" onclick="event.preventDefault(); ${callbackFunction}(${currentPage + 1})">下一页</a></li>`;
-
-    paginationHTML += `</ul>`;
-        paginationContainer.innerHTML = paginationHTML;
-    }
-
-    // Attach to the window object to make it globally available
-    window.renderPagination = renderPagination;
-})();
+// 导出函数到全局作用域
+window.showToast = showToast;
+window.formatDate = formatDate;
+window.confirmAction = confirmAction;
+window.showCommonModal = showCommonModal;

@@ -3,6 +3,8 @@ const fetch = require('node-fetch');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
+const db = require('../db_sqlite');
+const inventoryService = require('./inventoryService');
 
 async function getXizhiyueOrderList(token, page = 1, pageSize = 20) {
     const url = `https://api.westmonth.com/erp/order/list`;
@@ -30,14 +32,18 @@ async function getXizhiyueOrderList(token, page = 1, pageSize = 20) {
     }
 
     const orders = responseData.data && responseData.data.data ? responseData.data.data : [];
+    
     const extractedOrders = orders.map(order => ({
         global_order_no: order.global_order_no,
         shop_name: order.shop_name,
         place_order_time: order.place_order_time,
         amount: order.amount,
+        xy_country: order.xy_country,
+        country:order.country_code_desc,
         order_status: order.order_status,
         order_status_desc: getStatusDesc(order.order_status),
         order_items: (order.order_items || []).map(item => ({
+            ...item, // 保留原始的所有字段，防止漏掉
             picture_url: item.picture_url,
             platform_order_goods_no: item.platform_order_goods_no,
             platform_seller_sku: item.platform_seller_sku,
@@ -48,7 +54,21 @@ async function getXizhiyueOrderList(token, page = 1, pageSize = 20) {
     }));
 
     return extractedOrders;
-  }
+}
+
+// 获取待处理订单 (待付款 + 待审核)
+async function getPendingOrders(token) {
+    // 获取前100条订单进行过滤，确保覆盖最近的待处理订单
+    // 注意：如果待处理订单非常久远，这种方式可能会漏掉，但考虑到性能和第三方接口限制，暂定取前100条
+    const orders = await getXizhiyueOrderList(token, 1, 100);
+    
+    const pendingOrders = orders.filter(order => 
+        order.order_status === OrderStatus.NEED_PAY || 
+        order.order_status === OrderStatus.PAID_PENDING_AUDIT
+    );
+    
+    return pendingOrders;
+}
 
 function loadConfig() {
     try {
@@ -192,6 +212,17 @@ async function checkNewOrderAndSendNotice(token) {
 
         if (newOrders.length > 0 || toPayOrders.length > 0) {
             console.log(`[NOTICE] 发现新订单: ${newOrders.length}, 待付款: ${toPayOrders.length}。准备发送通知...`);
+            
+            // 打印 SKU 详情
+            const logSkus = (orders, type) => {
+                if (orders.length > 0) {
+                    const skus = orders.flatMap(o => o.order_items.map(i => `${i.xy_sku} (x${i.quantity})`)).join(', ');
+                    console.log(`[NOTICE] ${type} SKU详情: ${skus}`);
+                }
+            };
+            logSkus(newOrders, '新订单');
+            logSkus(toPayOrders, '待付款');
+
             await sendOrderNotification(newOrders, toPayOrders);
         } else {
             console.log('[NOTICE] 没有需要通知的订单');
@@ -201,7 +232,70 @@ async function checkNewOrderAndSendNotice(token) {
     }
 }
 
+// 检查单个 SKU 库存
+async function checkSkuInventory(sku, countryCode, token) {
+    console.log(`[CheckInventory] Checking SKU: ${sku}, Country: ${countryCode}`);
+    
+    try {
+        // 使用 inventoryService 获取商品详情
+        const invResult = await inventoryService.fetchInventoryFromAPI(sku, token);
+        
+        if (!invResult.success || !invResult.data) {
+            return { success: false, message: `未找到 SKU ${sku} 的商品信息: ${invResult.reason || '未知错误'}` };
+        }
+
+        const productData = invResult.data;
+        const deliveryRegions = productData.delivery_regions;
+
+        if (!deliveryRegions) {
+            return { success: false, message: `SKU ${sku} 没有配送区域信息` };
+        }
+
+        // 遍历 delivery_regions 寻找匹配 countryCode 的区域
+        // delivery_regions 是一个对象，key 是 ID，value 是区域信息对象
+        const regionValues = Object.values(deliveryRegions);
+        const matchedRegion = regionValues.find(r => r.delivery_region_code === countryCode);
+
+        if (matchedRegion) {
+            console.log(`[CheckInventory] Found matching region for ${countryCode}:`, matchedRegion);
+            return { 
+                success: true, 
+                data: {
+                    price: matchedRegion.price_format || matchedRegion.price,
+                    stock_status: matchedRegion.stock_text || matchedRegion.in_stock,
+                    quantity: matchedRegion.qty || matchedRegion.quantity,
+                    region_name: matchedRegion.delivery_region_name
+                }
+            };
+        } else {
+            return { success: false, message: `SKU ${sku} 不支持配送至国家代码: ${countryCode}` };
+        }
+
+    } catch (error) {
+        console.error(`[CheckInventory] Error:`, error);
+        return { success: false, message: `库存检查异常: ${error.message}` };
+    }
+}
+
+// 保留旧的 Order 级别方法作为兼容或占位
+async function checkOrderInventory(orderId) {
+    return { success: false, message: "请使用新的 SKU 级别检查接口" };
+}
+
+// TODO: 实现审核通过逻辑
+async function approveOrder(orderId) {
+    console.log(`[TODO] approveOrder called for orderId: ${orderId}`);
+    return { 
+        success: true, 
+        message: `[TODO] 审核通过功能尚未实现 (Order: ${orderId})` 
+    };
+}
+
 module.exports = {
     getXizhiyueOrderList,
-    checkNewOrderAndSendNotice
+    getPendingOrders,
+    checkNewOrderAndSendNotice,
+    checkOrderInventory,
+    checkSkuInventory,
+    approveOrder
 };

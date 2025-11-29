@@ -20,6 +20,7 @@ const resultRoutes = require('./routes/results');
 const scheduleRoutes = require('./routes/schedules');
 const inventoryRoutes = require('./routes/inventory');
 const orderRoutes = require('./routes/orders');
+const regionRoutes = require('./routes/regions');
 
 class WebServer {
   constructor() {
@@ -48,7 +49,8 @@ class WebServer {
   setupRoutes() {
     // API Routes
     this.app.use('/api/auth', authRoutes);
-    this.app.use('/api/users', userRoutes); // 包含 /regions
+    this.app.use('/api/users', userRoutes);
+    this.app.use('/api/regions', regionRoutes);
     this.app.use('/api/configs', configRoutes);
     this.app.use('/api/tasks', taskRoutes);
     this.app.use('/api/results', resultRoutes);

@@ -359,7 +359,14 @@ function getResults(limit = 100, offset = 0) {
   return db.prepare('SELECT * FROM results ORDER BY createdAt DESC LIMIT ? OFFSET ?').all(limit, offset).map(r => ({ ...r, skus: safeJsonParse(r.skus, []), regions: safeJsonParse(r.regions, []), results: safeJsonParse(r.results, []) }));
 }
 function getScheduledTaskHistory(limit = 20) {
-    return db.prepare(`SELECT * FROM results WHERE isScheduled = 1 ORDER BY createdAt DESC LIMIT ?`).all(limit).map(r => ({ ...r, skus: safeJsonParse(r.skus, []), regions: safeJsonParse(r.regions, []), results: safeJsonParse(r.results, []) }));
+    return db.prepare(`
+        SELECT r.*, s.name as scheduleName 
+        FROM results r 
+        LEFT JOIN schedules s ON r.scheduleId = s.id 
+        WHERE r.isScheduled = 1 
+        ORDER BY r.createdAt DESC 
+        LIMIT ?
+    `).all(limit).map(r => ({ ...r, skus: safeJsonParse(r.skus, []), regions: safeJsonParse(r.regions, []), results: safeJsonParse(r.results, []) }));
 }
 function getResultById(id) {
   const r = db.prepare('SELECT * FROM results WHERE id = ?').get(id);
