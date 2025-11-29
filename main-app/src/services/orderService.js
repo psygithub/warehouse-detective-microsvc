@@ -192,6 +192,17 @@ async function checkNewOrderAndSendNotice(token) {
 
         if (newOrders.length > 0 || toPayOrders.length > 0) {
             console.log(`[NOTICE] 发现新订单: ${newOrders.length}, 待付款: ${toPayOrders.length}。准备发送通知...`);
+            
+            // 打印 SKU 详情
+            const logSkus = (orders, type) => {
+                if (orders.length > 0) {
+                    const skus = orders.flatMap(o => o.order_items.map(i => `${i.xy_sku} (x${i.quantity})`)).join(', ');
+                    console.log(`[NOTICE] ${type} SKU详情: ${skus}`);
+                }
+            };
+            logSkus(newOrders, '新订单');
+            logSkus(toPayOrders, '待付款');
+
             await sendOrderNotification(newOrders, toPayOrders);
         } else {
             console.log('[NOTICE] 没有需要通知的订单');
