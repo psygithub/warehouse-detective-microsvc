@@ -52,7 +52,13 @@ async function getXizhiyueOrderList(token, page = 1, pageSize = 20) {
 
 function loadConfig() {
     try {
-        const configPath = path.join(__dirname, '../../../config/config.json');
+        // 优先检查 Docker 常用路径 /app/config/config.json
+        // 如果不存在则回退到本地开发路径
+        let configPath = '/app/config/config.json';
+        if (!fs.existsSync(configPath)) {
+            configPath = path.join(__dirname, '../../../config/config.json');
+        }
+
         console.log(`[DEBUG] 尝试加载配置文件路径: ${configPath}`);
         if (fs.existsSync(configPath)) {
             const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
