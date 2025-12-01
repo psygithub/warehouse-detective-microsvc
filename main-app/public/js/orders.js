@@ -15,7 +15,7 @@ const OrderStatus = {
     NO_TRACKING_NO: 301       // 未申请运单号
 };
 
-async function loadOrders() {
+async function loadOrders(isRefresh = false) {
     const ordersList = document.getElementById('ordersList');
     const newOrdersCountEl = document.getElementById('newOrdersCount');
     
@@ -26,7 +26,7 @@ async function loadOrders() {
     try {
         const token = localStorage.getItem('token');
         // 调用新的后端接口，不再直接调用 /api/orders
-        const response = await fetch('/api/orders/pending', {
+        const response = await fetch(`/api/orders/pending?isRefresh=${isRefresh}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -245,7 +245,7 @@ async function approveOrder(orderId) {
         const result = await response.json();
         alert(result.message || '操作完成');
         // 刷新列表
-        loadOrders();
+        loadOrders(true);
     } catch (error) {
         console.error('审核失败:', error);
         alert('审核失败: ' + error.message);
@@ -263,7 +263,7 @@ async function applyTrackingNo(orderId) {
         const result = await response.json();
         if (result.success) {
             alert(result.message || '申请成功');
-            loadOrders();
+            loadOrders(true);
         } else {
             alert(result.message || '申请失败');
         }

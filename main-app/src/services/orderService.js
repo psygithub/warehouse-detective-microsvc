@@ -298,6 +298,7 @@ async function approveOrder(orderId, token) {
     };
 
     try {
+        console.log(`[ApproveOrder] Request: ${JSON.stringify(body)}`);
         const response = await fetch(url, {
             method: 'POST',
             headers: { 

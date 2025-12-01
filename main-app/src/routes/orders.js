@@ -37,7 +37,10 @@ router.get('/pending', auth.authenticateToken.bind(auth), async (req, res) => {
     try {
         // 尝试从缓存获取
         const cachedData = cache.get(cacheKey);
-        if (cachedData) {
+        console.log(`CachedData: ${JSON.stringify(cachedData)}`);
+        console.log(`isRefresh: ${req.query.isRefresh}`);
+        const isRefresh = String(req.query.isRefresh).toLowerCase() === 'true';
+        if (!isRefresh && cachedData) {
             console.log('[Cache] Hit for pending orders');
             return res.json({ items: cachedData });
         }

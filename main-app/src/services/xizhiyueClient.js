@@ -26,7 +26,11 @@ class XizhiyueClient {
             const response = await fetch(url, options);
             if (!response.ok) throw new Error(`获取token请求失败: ${response.status} ${response.statusText}`);
             const res = await response.json();
-            this.authInfo = { token: res.data.access_token, lastUpdated: Date.now() };
+            this.authInfo = { 
+                token: res.data.access_token, 
+                erp_token: res.data.erp_token,
+                customer_token: res.data.customer_token,
+                lastUpdated: Date.now() };
             return this.authInfo;
         } catch (error) {
             console.error('获取认证信息失败:', error);
