@@ -13,7 +13,13 @@ router.post('/login', async (req, res) => {
     const userAgentStr = req.headers['user-agent'] || '';
     const parser = new UAParser(userAgentStr);
     const resultUA = parser.getResult();
-    const ip = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    
+    // 优先获取 Nginx 传递的真实 IP
+    let ip = req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress;
+    // 如果是多个IP（x-forwarded-for），取第一个
+    if (ip && ip.includes(',')) {
+        ip = ip.split(',')[0].trim();
+    }
 
     try {
         if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' });
