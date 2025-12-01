@@ -19,8 +19,18 @@ router.get('/skus', (req, res) => {
 router.get('/skus-paginated', (req, res) => {
     console.log(`[API Entry] GET /api/inventory/skus-paginated`);
     try {
-        const { page = 1, limit = 20 } = req.query;
-        const allSkus = database.getTrackedSkus();
+        const { page = 1, limit = 20, search } = req.query;
+        let allSkus;
+        console.log(`[LOG] Paginated SKUs request received with page: ${page}, limit: ${limit}, search: '${search || ''}'`);
+
+        if (search) {
+            const term = search.trim();
+            // 使用 SQL 模糊搜索
+            allSkus = database.searchTrackedSkus(term);
+        } else {
+            allSkus = database.getTrackedSkus();
+        }
+
         const startIndex = (page - 1) * limit;
         const endIndex = page * limit;
         const paginatedSkus = allSkus.slice(startIndex, endIndex);

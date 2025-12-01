@@ -8,7 +8,18 @@
     async function loadInventoryConfigSkus(page = 1) {
         currentPage = page;
         rowsPerPage = document.getElementById('rows-per-page-select').value;
-        const response = await apiRequest(`/api/inventory/skus-paginated?page=${page}&limit=${rowsPerPage}`);
+        
+        let url = `/api/inventory/skus-paginated?page=${page}&limit=${rowsPerPage}`;
+        
+        const searchInput = document.getElementById('sku-search-input');
+        if (searchInput) {
+            const searchTerm = searchInput.value.trim();
+            if (searchTerm) {
+                url += `&search=${encodeURIComponent(searchTerm)}`;
+            }
+        }
+
+        const response = await apiRequest(url);
         if (response && response.items) {
             existingSkus = new Set(response.items.map(s => s.sku));
             renderSkuList(response.items);
@@ -61,6 +72,21 @@
         const fetchNowBtn = document.getElementById('fetch-now-btn');
         if (fetchNowBtn) {
             fetchNowBtn.addEventListener('click', handleFetchNow);
+        }
+
+        // Search events
+        const searchBtn = document.getElementById('sku-search-btn');
+        const searchInput = document.getElementById('sku-search-input');
+        
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => loadInventoryConfigSkus(1));
+        }
+        if (searchInput) {
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    loadInventoryConfigSkus(1);
+                }
+            });
         }
 
         // Load schedules

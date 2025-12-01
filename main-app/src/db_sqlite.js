@@ -424,6 +424,20 @@ function getTrackedSkus() {
     const stmt = db.prepare(`SELECT ts.id, ts.sku, ts.product_name, ts.product_image, ts.product_id, ts.product_sku_id, ts.created_at, ts.updated_at, (SELECT qty FROM inventory_history WHERE sku = ts.sku ORDER BY created_at DESC LIMIT 1) as latest_qty, (SELECT month_sale FROM inventory_history WHERE sku = ts.sku ORDER BY created_at DESC LIMIT 1) as latest_month_sale, (SELECT created_at FROM inventory_history WHERE sku = ts.sku ORDER BY created_at DESC LIMIT 1) as latest_record_time FROM tracked_skus ts ORDER BY ts.created_at DESC`);
     return stmt.all();
 }
+
+function searchTrackedSkus(keyword) {
+    const sql = `
+        SELECT 
+            ts.id, ts.sku, ts.product_name, ts.product_image, ts.product_id, ts.product_sku_id, ts.created_at, ts.updated_at, 
+            (SELECT qty FROM inventory_history WHERE sku = ts.sku ORDER BY created_at DESC LIMIT 1) as latest_qty, 
+            (SELECT month_sale FROM inventory_history WHERE sku = ts.sku ORDER BY created_at DESC LIMIT 1) as latest_month_sale, 
+            (SELECT created_at FROM inventory_history WHERE sku = ts.sku ORDER BY created_at DESC LIMIT 1) as latest_record_time 
+        FROM tracked_skus ts 
+        WHERE ts.sku LIKE ?
+        ORDER BY ts.created_at DESC
+    `;
+    return db.prepare(sql).all(`%${keyword}%`);
+}
 function getTrackedSkuBySku(sku) { return db.prepare('SELECT * FROM tracked_skus WHERE sku = ?').get(sku); }
 function getTrackedSkuById(id) {
     const stmt = db.prepare(`
@@ -697,7 +711,7 @@ module.exports = {
   saveResult, getResults, getResultById, getScheduledTaskHistory,
   saveSchedule, getSchedules, getScheduleById, updateSchedule, deleteSchedule,
   getXizhiyueProductBySkuId, updateXizhiyueProduct, createXizhiyueProduct,
-  getTrackedSkus, getTrackedSkuBySku, addTrackedSku, deleteTrackedSku, getTrackedSkuById, updateTrackedSku, getTrackedSkusBySkuNames, addTrackedSkusBulk,
+  getTrackedSkus, searchTrackedSkus, getTrackedSkuBySku, addTrackedSku, deleteTrackedSku, getTrackedSkuById, updateTrackedSku, getTrackedSkusBySkuNames, addTrackedSkusBulk,
   getInventoryHistory, saveInventoryRecord, hasInventoryHistory, saveRegionalInventoryRecord,
   getSystemConfigs, updateSystemConfigs, getRegionalInventoryHistoryForSku, createAlert,
   getRegionalInventoryHistoryBySkuId, getLatestRegionalInventoryHistory, getAllRegionsFromHistory, getActiveAlerts,
