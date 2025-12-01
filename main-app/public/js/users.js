@@ -18,6 +18,7 @@
 
             // Load user data
             await loadUsers();
+            await loadLoginLogs();
             // Set up event listeners once everything is in the DOM
             setupEventListeners();
         } else {
@@ -86,6 +87,95 @@
             case 'user': return 'info';
             default: return 'secondary';
         }
+    }
+
+    // Login Logs
+    async function loadLoginLogs(page = 1) {
+        const tableBody = document.getElementById('loginLogsTableBody');
+        const paginationContainer = document.getElementById('logs-pagination');
+        if (!tableBody) return;
+
+        try {
+            const result = await apiRequest(`/api/auth/logs?page=${page}&limit=10`);
+            if (result && result.items) {
+                renderLoginLogs(result.items);
+                renderLogsPagination(result.total, page, 10);
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center">暂无日志</td></tr>';
+            }
+        } catch (error) {
+            console.error('加载日志失败:', error);
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">加载失败</td></tr>';
+        }
+    }
+
+    // Expose for pagination onclick
+    window.loadLoginLogs = loadLoginLogs;
+
+    function renderLoginLogs(logs) {
+        const tableBody = document.getElementById('loginLogsTableBody');
+        if (!tableBody) return;
+        tableBody.innerHTML = '';
+
+        if (logs.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center">暂无日志</td></tr>';
+            return;
+        }
+
+        logs.forEach(log => {
+            const statusBadge = log.status === 'success' 
+                ? '<span class="badge bg-success">成功</span>' 
+                : '<span class="badge bg-danger">失败</span>';
+            
+            const row = `
+                <tr>
+                    <td>${log.username || '-'}</td>
+                    <td>${log.ip_address || '-'}</td>
+                    <td>${log.browser || '-'}</td>
+                    <td>${log.os || '-'} / ${log.device || '-'}</td>
+                    <td>${new Date(log.login_time).toLocaleString()}</td>
+                    <td>${statusBadge}</td>
+                </tr>
+            `;
+            tableBody.insertAdjacentHTML('beforeend', row);
+        });
+    }
+
+    function renderLogsPagination(total, currentPage, limit) {
+        const container = document.getElementById('logs-pagination');
+        if (!container) return;
+        
+        const totalPages = Math.ceil(total / limit);
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let html = '<nav><ul class="pagination pagination-sm mb-0">';
+        
+        // Prev
+        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <button class="page-link" onclick="loadLoginLogs(${currentPage - 1})">上一页</button>
+        </li>`;
+
+        // Page numbers
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                    <button class="page-link" onclick="loadLoginLogs(${i})">${i}</button>
+                </li>`;
+            } else if (i === currentPage - 3 || i === currentPage + 3) {
+                 html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+
+        // Next
+        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+            <button class="page-link" onclick="loadLoginLogs(${currentPage + 1})">下一页</button>
+        </li>`;
+
+        html += '</ul></nav>';
+        container.innerHTML = html;
     }
 
     function setupEventListeners() {

@@ -209,6 +209,18 @@ CREATE TABLE IF NOT EXISTS user_region (
   FOREIGN KEY (region_id) REFERENCES regions (id) ON DELETE CASCADE,
   UNIQUE(user_id, region_id)
 );
+
+CREATE TABLE IF NOT EXISTS login_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT,
+  ip_address TEXT,
+  user_agent TEXT,
+  browser TEXT,
+  os TEXT,
+  device TEXT,
+  status TEXT,
+  login_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 `;
 
 // 数据库自动同步逻辑
@@ -705,8 +717,38 @@ function replaceUserSkus(userId, skus) {
     })();
 }
 
+function createLoginLog(logData) {
+    const stmt = db.prepare(`
+        INSERT INTO login_logs (username, ip_address, user_agent, browser, os, device, status, login_time)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const timestamp = getLocalTimestampForDb();
+    stmt.run(
+        logData.username,
+        logData.ip_address,
+        logData.user_agent,
+        logData.browser,
+        logData.os,
+        logData.device,
+        logData.status,
+        timestamp
+    );
+}
+
+function getLoginLogsPaginated({ page = 1, limit = 20 }) {
+    const offset = (page - 1) * limit;
+    const totalStmt = db.prepare('SELECT COUNT(*) as total FROM login_logs');
+    const { total } = totalStmt.get();
+
+    const itemsStmt = db.prepare('SELECT * FROM login_logs ORDER BY login_time DESC LIMIT ? OFFSET ?');
+    const items = itemsStmt.all(limit, offset);
+
+    return { items, total, page, limit };
+}
+
 module.exports = {
   getAllUsers, findUserById, findUserByUsername, createUser, updateUser, deleteUser,
+  createLoginLog, getLoginLogsPaginated,
   saveConfig, getConfigs, getConfigById, updateConfig, deleteConfig,
   saveResult, getResults, getResultById, getScheduledTaskHistory,
   saveSchedule, getSchedules, getScheduleById, updateSchedule, deleteSchedule,

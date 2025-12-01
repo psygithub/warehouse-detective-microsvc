@@ -44,6 +44,7 @@
     "node-cron": "^4.2.1",
     "node-fetch": "^2.7.0",
     "nodemailer": "^7.0.5",
+    "ua-parser-js": "^2.0.6",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
