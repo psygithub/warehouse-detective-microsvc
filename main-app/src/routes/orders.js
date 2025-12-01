@@ -2,6 +2,7 @@ const express = require('express');
 const auth = require('../auth');
 const orderService = require('../services/orderService');
 const xizhiyueClient = require('../services/xizhiyueClient');
+const cache = require('../services/cacheService');
 const router = express.Router();
 
 router.get('/', auth.authenticateToken.bind(auth), async (req, res) => {
@@ -31,9 +32,23 @@ router.get('/', auth.authenticateToken.bind(auth), async (req, res) => {
 // 获取待处理订单
 router.get('/pending', auth.authenticateToken.bind(auth), async (req, res) => {
     console.log(`[API Entry] GET /api/orders/pending`);
+    const cacheKey = 'pending_orders';
+    
     try {
+        // 尝试从缓存获取
+        const cachedData = cache.get(cacheKey);
+        if (cachedData) {
+            console.log('[Cache] Hit for pending orders');
+            return res.json({ items: cachedData });
+        }
+
         const authInfo = await xizhiyueClient.getAuthInfo();
         const pendingOrders = await orderService.getPendingOrders(authInfo.token);
+        
+        // 存入缓存，5分钟 (300秒)
+        cache.set(cacheKey, pendingOrders, 300);
+        console.log('[Cache] Set pending orders (TTL: 300s)');
+
         res.json({
             items: pendingOrders
         });

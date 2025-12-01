@@ -160,9 +160,9 @@ window.switchAlertTab = function(region) {
 
 function getBadgeForLevel(level) {
     switch (Number(level)) {
-        case 3: return '<span class="badge bg-danger">严重</span>';
-        case 2: return '<span class="badge bg-warning text-dark">警告</span>';
-        case 1: return '<span class="badge bg-info text-dark">提示</span>';
+        case 3: return '<span class="badge bg-danger">快速</span>';
+        case 2: return '<span class="badge bg-warning text-dark">中等</span>';
+        case 1: return '<span class="badge bg-info text-dark">普通</span>';
         default: return '';
     }
 }
