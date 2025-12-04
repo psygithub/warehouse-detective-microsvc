@@ -28,7 +28,7 @@ APP_PORT=3000
 APP_HEALTH_URL="http://localhost:${APP_PORT}/api/health"
 OLD_CONTAINER_NAME="${APP_CONTAINER_NAME}-old-backup"
 HEALTH_CHECK_TIMEOUT=30 # 秒
-KEEP_LATEST_IMAGES=5    # [建议 1] 保留最近的镜像数量
+KEEP_LATEST_IMAGES=2    # [建议 1] 保留最近的镜像数量
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 
 # --- 彩色日志函数 ---
