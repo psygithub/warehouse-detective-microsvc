@@ -66,6 +66,9 @@ async function fetchInventoryFromListAPI(sku, token) {
             const response = await fetch(url, { headers, signal: controller.signal });
             clearTimeout(timeoutId);
 
+            console.log(`---------------------------------1---------------------------------------`);
+            console.log(`---------------------------------1---------------------------------------`);
+            console.log(`---------------------------------1---------------------------------------`);
             const responseText = await response.text();
             console.log(`[LOG] [List API] Attempt #${i + 1} responseText for SKU ${sku}:`, responseText);
             if (!response.ok) {
@@ -73,21 +76,24 @@ async function fetchInventoryFromListAPI(sku, token) {
                 continue; // Try next URL
             }
 
+            console.log(`---------------------------------2---------------------------------------`);
+            console.log(`---------------------------------2---------------------------------------`);
+            console.log(`---------------------------------2---------------------------------------`);
             const responseData = JSON.parse(responseText);
             console.log(`[LOG] [List API] Attempt #${i + 1} Parsed response data for SKU ${sku}:`, responseData);
-            if (responseData && responseData.status === 'success' && responseData.data.data.length > 0) {
-                const productData = responseData.data.data[0];
+            if (responseData && responseData.status === 'success' && Array.isArray(responseData.data.data)) {
+                const productData = responseData.data.data.find(item => item.product_sku === sku);
 
-                if (productData.product_sku === sku) {
+                if (productData) {
                     console.log(`[LOG] [List API] Attempt #${i + 1} SUCCEEDED. Found matching SKU: ${sku}.`);
                     const formattedData = formatProductData(productData);
                     console.log(`[LOG] [List API] Returning formatted data for SKU ${sku}:`, formattedData);
                     return { success: true, data: formattedData };
                 } else {
-                    console.warn(`[LOG] [List API] Attempt #${i + 1} found a mismatched SKU. Requested: ${sku}, Got: ${productData.product_sku}.`);
+                    console.warn(`[LOG] [List API] Attempt #${i + 1} did not find matching SKU in list. Requested: ${sku}.`);
                 }
             } else {
-                console.log(`[LOG] [List API] Attempt #${i + 1} did not return any product data.`);
+                console.log(`[LOG] [List API] Attempt #${i + 1} did not return valid product data list.`);
             }
         } catch (error) {
             console.error(`[LOG] [List API] Attempt #${i + 1} threw an error:`, error.message);
