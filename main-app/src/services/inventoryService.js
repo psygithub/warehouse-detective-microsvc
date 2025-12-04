@@ -1,6 +1,18 @@
 const db = require('../db_sqlite');
 const fetch = require('node-fetch'); // 使用 node-fetch
-const TIME_OUT=10*1000; // 10秒超时
+const TIME_OUT=30*1000; // 30秒超时
+const BATCH_SIZE = 10; //并发限制
+
+// 辅助函数：并发控制
+async function processInBatches(items, batchSize, processFn) {
+    const results = [];
+    for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        const batchResults = await Promise.all(batch.map(processFn));
+        results.push(...batchResults);
+    }
+    return results;
+}
 
 // 辅助函数：生成符合数据库格式的本地日期 (YYYY-MM-DD)
 function getLocalDateForDb() {
@@ -55,7 +67,7 @@ async function fetchInventoryFromListAPI(sku, token) {
             clearTimeout(timeoutId);
 
             const responseText = await response.text();
-            
+            console.log(`[LOG] [List API] Attempt #${i + 1} responseText for SKU ${sku}:`, responseText);
             if (!response.ok) {
                 console.warn(`[LOG] [List API] Attempt #${i + 1} failed with status ${response.status}.`);
                 continue; // Try next URL
@@ -105,12 +117,18 @@ async function fetchInventoryFromDetailsAPI(productId, sku, token) {
         const response = await fetch(url, { headers, signal: controller.signal });
         clearTimeout(timeoutId);
 
+        console.log(`---------------------------------1---------------------------------------`);
+        console.log(`---------------------------------1---------------------------------------`);
+        console.log(`---------------------------------1---------------------------------------`);
         const responseText = await response.text();
-
+        console.log(`[LOG] [Details API] responseText  for SKU ${sku}:`, responseText);
         if (!response.ok) {
             throw new Error(`API request failed with status ${response.status}`);
         }
 
+        console.log(`---------------------------------2---------------------------------------`);
+        console.log(`---------------------------------2---------------------------------------`);
+        console.log(`---------------------------------2---------------------------------------`);
         const responseData = JSON.parse(responseText);
         console.log(`[LOG] [Details API] Parsed response data for SKU ${sku}:`, responseData);
         if (responseData && responseData.status === 'success' && responseData.data) {
@@ -218,8 +236,8 @@ async function _fetchAndSaveInventoryForTrackedSku(trackedSku, token) {
 
 async function fetchAndSaveAllTrackedSkus(token) {
     const skusToTrack = db.getTrackedSkus();
-    const promises = skusToTrack.map(trackedSku => _fetchAndSaveInventoryForTrackedSku(trackedSku, token));
-    const allResults = await Promise.all(promises);
+    // 使用并发控制
+    const allResults = await processInBatches(skusToTrack, BATCH_SIZE, trackedSku => _fetchAndSaveInventoryForTrackedSku(trackedSku, token));
 
     const results = {
         success: allResults.filter(r => r.success),
@@ -302,8 +320,8 @@ async function addOrUpdateTrackedSkusInBatch(skus, token) {
         return { newSkusCount: 0, failedSkus: [] };
     }
 
-    const promises = newSkus.map(sku => fetchInventoryFromAPI(sku, token));
-    const results = await Promise.all(promises);
+    // 使用并发控制
+    const results = await processInBatches(newSkus, BATCH_SIZE, sku => fetchInventoryFromAPI(sku, token));
 
     const successfulFetches = results.filter(r => r.success).map(r => r.data);
     const failedSkus = results.filter(r => !r.success);

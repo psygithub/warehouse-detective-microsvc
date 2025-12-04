@@ -243,12 +243,12 @@ async function approveOrder(orderId) {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const result = await response.json();
-        alert(result.message || '操作完成');
+        showCommonModal('操作结果', result.message || '操作完成');
         // 刷新列表
         loadOrders(true);
     } catch (error) {
         console.error('审核失败:', error);
-        alert('审核失败: ' + error.message);
+        showCommonModal('错误', '审核失败: ' + error.message);
     }
 }
 
@@ -262,13 +262,13 @@ async function applyTrackingNo(orderId) {
         });
         const result = await response.json();
         if (result.success) {
-            alert(result.message || '申请成功');
+            showCommonModal('申请结果', result.message || '申请成功');
             loadOrders(true);
         } else {
-            alert(result.message || '申请失败');
+            showCommonModal('错误', result.message || '申请失败');
         }
     } catch (error) {
         console.error('申请运单号失败:', error);
-        alert('申请运单号失败: ' + error.message);
+        showCommonModal('错误', '申请运单号失败: ' + error.message);
     }
 }

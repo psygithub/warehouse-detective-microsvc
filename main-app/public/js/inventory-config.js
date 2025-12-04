@@ -144,17 +144,17 @@
     async function handleSaveSkus() {
         const skusText = document.getElementById('sku-textarea').value.trim();
         if (!skusText) {
-            alert('请输入 SKU');
+            showCommonModal('提示', '请输入 SKU');
             return;
         }
         const skus = skusText.split('\n').map(s => s.trim()).filter(s => s);
         if (skus.length === 0) {
-            alert('请输入有效的 SKU');
+            showCommonModal('提示', '请输入有效的 SKU');
             return;
         }
         const uniqueSkus = [...new Set(skus)];
         if (uniqueSkus.length === 0) {
-            alert('请输入有效的 SKU');
+            showCommonModal('提示', '请输入有效的 SKU');
             return;
         }
         const saveBtn = document.getElementById('save-skus-btn');
@@ -167,9 +167,9 @@
                 const failedSkusDetails = result.failedSkus.map(item => `  - ${item.sku} (${item.reason || '未知原因'})`).join('\n');
                 message += `\n\n${result.failedCount} 个 SKU 查询失败:\n${failedSkusDetails}`;
             }
-            alert(message);
+            showCommonModal('批量添加结果', message.replace(/\n/g, '<br>'));
         } catch (error) {
-            alert(`添加失败: ${error.message}`);
+            showCommonModal('错误', `添加失败: ${error.message}`);
         } finally {
             saveBtn.disabled = false;
             saveBtn.innerHTML = '保存';
@@ -188,11 +188,11 @@
         }
         try {
             const result = await apiRequest('/api/inventory/fetch-now', 'POST');
-            alert(result.message || '查询任务已启动');
+            showCommonModal('任务状态', result.message || '查询任务已启动');
             await loadInventoryConfigSkus();
             await loadScheduleHistory();
         } catch (error) {
-            alert(`查询失败: ${error.message}`);
+            showCommonModal('错误', `查询失败: ${error.message}`);
         }
     }
 
@@ -262,10 +262,10 @@
             button.disabled = true;
             button.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
             const result = await apiRequest(`/api/inventory/run-analysis/${skuId}`, 'POST');
-            alert(`分析完成！新增 ${result.newAlertsCount} 条预警。`);
+            showCommonModal('分析完成', `新增 ${result.newAlertsCount} 条预警。`);
             await window.sectionInitializers['inventory-config']();
         } catch (error) {
-            alert(`分析失败: ${error.message}`);
+            showCommonModal('错误', `分析失败: ${error.message}`);
         } finally {
             button.disabled = false;
             button.innerHTML = '分析';
@@ -276,11 +276,11 @@
         try {
             const result = await apiRequest(`/api/inventory/fetch-sku/${skuId}`, 'POST');
             if (result) {
-                alert(`查询成功: ${result.sku} - 库存: ${result.qty}`);
+                showCommonModal('查询成功', `SKU: ${result.sku}<br>库存: ${result.qty}`);
                 loadInventoryConfigSkus(currentPage);
             }
         } catch (error) {
-            alert(`查询失败: ${error.message}`);
+            showCommonModal('错误', `查询失败: ${error.message}`);
         }
     }
 

@@ -68,7 +68,7 @@
             const allData = await apiRequest(`/api/inventory/pivot-history?page=1&limit=9999`);
             
             if (!allData || !allData.rows || allData.rows.length === 0) {
-                alert('没有数据可导出。');
+                showCommonModal('提示', '没有数据可导出。');
                 return;
             }
 
@@ -107,7 +107,7 @@
 
         } catch (error) {
             console.error('导出CSV失败:', error);
-            alert(`导出失败: ${error.message}`);
+            showCommonModal('错误', `导出失败: ${error.message}`);
         }
     }
 

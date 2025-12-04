@@ -71,7 +71,7 @@ function displayTaskResults(results) {
 async function executeWithConfig() {
     const configId = document.getElementById('configSelect').value;
     if (!configId) {
-        alert('请选择配置');
+        showCommonModal('提示', '请选择配置');
         return;
     }
 
@@ -79,7 +79,7 @@ async function executeWithConfig() {
         const config = await apiRequest(`/api/configs/${configId}`);
         await executeTask(config.skus, config.regions, configId);
     } catch (error) {
-        alert('执行失败: ' + error.message);
+        showCommonModal('错误', '执行失败: ' + error.message);
     }
 }
 
@@ -94,7 +94,7 @@ function setupForms() {
             const regionsText = document.getElementById('taskRegions').value.trim();
 
             if (!skusText) {
-                alert('请输入SKU');
+                showCommonModal('提示', '请输入SKU');
                 return;
             }
 

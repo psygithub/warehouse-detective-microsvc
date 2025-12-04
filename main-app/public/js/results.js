@@ -158,6 +158,6 @@ async function viewResult(resultId) {
         modal.show();
 
     } catch (error) {
-        alert('加载结果详情失败: ' + error.message);
+        showCommonModal('错误', '加载结果详情失败: ' + error.message);
     }
 }

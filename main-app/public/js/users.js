@@ -245,7 +245,7 @@
                         await apiRequest(`/api/users/${userId}`, 'DELETE');
                         loadUsers();
                     } catch (error) {
-                        alert('删除用户失败: ' + error.message);
+                        showCommonModal('错误', '删除用户失败: ' + error.message);
                     }
                 }
             }
@@ -278,7 +278,7 @@
 
                 // 当创建新用户时，密码是必需的
                 if (!userId && !userData.password) {
-                    alert('创建新用户时必须提供密码。');
+                    showCommonModal('提示', '创建新用户时必须提供密码。');
                     return;
                 }
 
@@ -295,7 +295,7 @@
                     userModal.hide();
                     loadUsers();
                 } catch (error) {
-                    alert('保存用户失败: ' + error.message);
+                    showCommonModal('错误', '保存用户失败: ' + error.message);
                 }
             }
         });
@@ -386,7 +386,7 @@
                     newRegionNameInput.value = '';
                     await loadRegions();
                 } catch (error) {
-                    alert('保存新区域失败: ' + error.message);
+                    showCommonModal('错误', '保存新区域失败: ' + error.message);
                 }
             }
         });
@@ -399,7 +399,7 @@
                         await apiRequest(`/api/regions/${regionId}`, 'DELETE');
                         await loadRegions(); // Reload regions to reflect the deletion
                     } catch (error) {
-                        alert('删除区域失败: ' + error.message);
+                        showCommonModal('错误', '删除区域失败: ' + error.message);
                     }
                 }
             }
@@ -411,7 +411,7 @@
                 await apiRequest(`/api/users/${user.id}/regions`, 'PUT', { regionIds: selectedRegionIds });
                 modal.hide();
             } catch (error) {
-                alert('保存用户区域关联失败: ' + error.message);
+                showCommonModal('错误', '保存用户区域关联失败: ' + error.message);
             }
         });
 

@@ -120,7 +120,7 @@ async function saveConfig() {
     const description = document.getElementById('configDescription').value.trim();
 
     if (!name || !skusText) {
-        alert('请填写配置名称和SKU列表');
+        showCommonModal('提示', '请填写配置名称和SKU列表');
         return;
     }
 
@@ -141,7 +141,7 @@ async function saveConfig() {
         loadConfigsForSelect();
 
     } catch (error) {
-        alert('保存配置失败: ' + error.message);
+        showCommonModal('错误', '保存配置失败: ' + error.message);
     }
 }
 
@@ -157,7 +157,7 @@ async function deleteConfig(configId) {
         loadConfigs();
         loadConfigsForSelect();
     } catch (error) {
-        alert('删除配置失败: ' + error.message);
+        showCommonModal('错误', '删除配置失败: ' + error.message);
     }
 }
 

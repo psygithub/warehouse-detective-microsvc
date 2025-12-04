@@ -255,9 +255,9 @@ async function saveAlertConfig() {
     
     try {
         await apiRequest('/api/inventory/system-configs', 'POST', { configs });
-        alert('预警规则已保存');
+        showCommonModal('操作成功', '预警规则已保存');
     } catch (error) {
-        alert('保存预警规则失败: ' + error.message);
+        showCommonModal('错误', '保存预警规则失败: ' + error.message);
     }
 }
 
@@ -265,9 +265,9 @@ async function runAnalysis() {
     if (!confirm('立即执行一次库存分析吗？')) return;
     try {
         const result = await apiRequest('/api/inventory/run-analysis', 'POST');
-        alert(result.message);
+        showCommonModal('任务状态', result.message);
         window.loadAlerts(); // Refresh alerts list
     } catch (error) {
-        alert('执行分析失败: ' + error.message);
+        showCommonModal('错误', '执行分析失败: ' + error.message);
     }
 }

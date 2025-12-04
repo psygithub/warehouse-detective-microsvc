@@ -172,7 +172,7 @@ function showScheduleModal(scheduleId = null) {
             modal.show();
         }).catch(error => {
             console.error('加载定时任务失败:', error);
-            alert('加载定时任务失败: ' + error.message);
+            showCommonModal('错误', '加载定时任务失败: ' + error.message);
         });
     } else {
         // 新建模式
@@ -195,7 +195,7 @@ async function loadScheduleForEdit(scheduleId) {
         document.getElementById('scheduleTaskType').value = schedule.task_type || 'fetch_inventory';
 
     } catch (error) {
-        alert('加载定时任务失败: ' + error.message);
+        showCommonModal('错误', '加载定时任务失败: ' + error.message);
         throw error;
     }
 }
@@ -208,7 +208,7 @@ async function saveSchedule() {
     const taskType = document.getElementById('scheduleTaskType').value;
 
     if (!name || !cronExpression || !taskType) {
-        alert('请填写所有必填字段');
+        showCommonModal('提示', '请填写所有必填字段');
         return;
     }
     
@@ -234,7 +234,7 @@ async function saveSchedule() {
         loadSchedules();
 
     } catch (error) {
-        alert('保存定时任务失败: ' + error.message);
+        showCommonModal('错误', '保存定时任务失败: ' + error.message);
     }
 }
 
@@ -249,7 +249,7 @@ async function deleteSchedule(scheduleId) {
         await apiRequest(`/api/schedules/${scheduleId}`, 'DELETE');
         loadSchedules();
     } catch (error) {
-        alert('删除定时任务失败: ' + error.message);
+        showCommonModal('错误', '删除定时任务失败: ' + error.message);
     }
 }
 
@@ -257,10 +257,10 @@ async function executeSchedule(scheduleId) {
     if (!confirm('确定要立即执行这个任务吗？')) return;
     try {
         const result = await apiRequest(`/api/schedules/${scheduleId}/run`, 'POST');
-        alert(result.message || '任务已开始执行');
+        showCommonModal('任务状态', result.message || '任务已开始执行');
         setTimeout(loadScheduleHistory, 2000); 
     } catch (error) {
-        alert('执行任务失败: ' + error.message);
+        showCommonModal('错误', '执行任务失败: ' + error.message);
     }
 }
 
@@ -296,7 +296,7 @@ async function showScheduleHistory(scheduleId) {
         modal.show();
     } catch (error) {
         console.error('加载任务历史失败:', error);
-        alert('加载任务历史失败: ' + error.message);
+        showCommonModal('错误', '加载任务历史失败: ' + error.message);
     }
 }
 
