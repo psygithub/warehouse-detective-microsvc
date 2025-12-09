@@ -6,22 +6,27 @@
     .card-stats-compact .card-body {
         padding: 0.8rem;
     }
+
     .card-stats-compact .card-category {
         margin-bottom: 0.2rem;
         font-size: 0.8rem;
     }
+
     .card-stats-compact .card-title {
         margin-bottom: 0;
         font-size: 1.5rem;
     }
+
     .card-stats-compact .icon i {
         font-size: 1.8rem;
     }
+
     .table-container {
         flex-grow: 1;
         overflow-y: auto;
         min-height: 0;
     }
+
     .table thead th {
         position: sticky;
         top: 0;
@@ -33,7 +38,8 @@
 <!-- 统计卡片 -->
 <div class="card mt-3">
     <div class="card-header">
-        <a class="text-decoration-none" data-bs-toggle="collapse" href="#stats-collapse-area" role="button" aria-expanded="false" aria-controls="stats-collapse-area">
+        <a class="text-decoration-none" data-bs-toggle="collapse" href="#stats-collapse-area" role="button"
+            aria-expanded="false" aria-controls="stats-collapse-area">
             <h5><i class="fas fa-chart-bar me-2"></i>统计概览 (点击展开/折叠)</h5>
         </a>
     </div>
@@ -109,7 +115,8 @@
 <!-- 预警规则配置 -->
 <div class="card mt-3">
     <div class="card-header">
-        <a class="text-decoration-none" data-bs-toggle="collapse" href="#config-collapse-area" role="button" aria-expanded="false" aria-controls="config-collapse-area">
+        <a class="text-decoration-none" data-bs-toggle="collapse" href="#config-collapse-area" role="button"
+            aria-expanded="false" aria-controls="config-collapse-area">
             <h5><i class="fas fa-cog me-2"></i>预警规则配置 (点击展开/折叠)</h5>
         </a>
     </div>
@@ -117,141 +124,154 @@
         <div class="card-body py-2">
             <details>
                 <summary class="text-info" style="cursor: pointer;">点击展开/折叠规则说明</summary>
-            <div class="alert alert-info mt-2" role="alert">
-                <h6 class="alert-heading">三级预警规则说明</h6>
-                <p class="small">系统会根据您配置的参数，自动进行三级预警判断。</p>
-                <hr>
-                <p class="small mb-1"><strong>预警级别判断逻辑:</strong></p>
-                <ul class="small">
-                    <li><strong>3级 (高危)</strong>: <code>日均消耗量</code> > <code>高危日消耗量</code>。</li>
-                    <li><strong>2级 (中危)</strong>: <code>日均消耗量</code> 在区间内，且 <code>日均消耗率</code> > <code>基础消耗率阈值</code> * <code>中级预警倍数</code>。</li>
-                    <li><strong>1级 (低危)</strong>: <code>日均消耗量</code> 在区间内，且 <code>日均消耗率</code> > <code>基础消耗率阈值</code>。</li>
-                </ul>
-                <p class="small mb-0"><strong>注意:</strong> 只有当 <code>日均消耗量</code> 大于等于 <code>关注区间下限</code> 时，系统才会开始进行1级和2级的预警判断。</p>
+                <div class="alert alert-info mt-2" role="alert">
+                    <h6 class="alert-heading">三级预警规则说明</h6>
+                    <p class="small">系统会根据您配置的参数，自动进行三级预警判断。</p>
+                    <hr>
+                    <p class="small mb-1"><strong>预警级别判断逻辑:</strong></p>
+                    <ul class="small">
+                        <li><strong>3级 (高危)</strong>: <code>日均消耗量</code> > <code>高危日消耗量</code>。</li>
+                        <li><strong>2级 (中危)</strong>: <code>日均消耗量</code> 在区间内，且 <code>日均消耗率</code> >
+                            <code>基础消耗率阈值</code> * <code>中级预警倍数</code>。</li>
+                        <li><strong>1级 (低危)</strong>: <code>日均消耗量</code> 在区间内，且 <code>日均消耗率</code> >
+                            <code>基础消耗率阈值</code>。</li>
+                    </ul>
+                    <p class="small mb-0"><strong>注意:</strong> 只有当 <code>日均消耗量</code> 大于等于 <code>关注区间下限</code>
+                        时，系统才会开始进行1级和2级的预警判断。</p>
+                </div>
+            </details>
+            <div class="row mt-2 align-items-end">
+                <div class="col-md-2 mb-3">
+                    <label for="alert-timespan-input" class="form-label">分析时间窗口 (天):</label>
+                    <input type="number" id="alert-timespan-input" class="form-control" value="7">
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="alert-min-daily-consumption-input" class="form-label" data-bs-toggle="tooltip" title="日均消耗量进入此范围才开始进行1级和2级预警判断">区间下限 (日耗):</label>
+                    <input type="number" id="alert-min-daily-consumption-input" class="form-control" value="5" step="1">
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="alert-max-daily-consumption-input" class="form-label" data-bs-toggle="tooltip" title="日均消耗量超过此值将直接触发最高级预警">高危日消耗量:</label>
+                    <input type="number" id="alert-max-daily-consumption-input" class="form-control" value="20" step="1">
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="alert-threshold-input" class="form-label" data-bs-toggle="tooltip" title="触发1级预警所需的基础日均消耗率">基础消耗率阈值 <span class="text-muted fw-normal" style="font-size: 0.8em;">(0~1.0, 如0.1=10%)</span>:</label>
+                    <input type="number" id="alert-threshold-input" class="form-control" value="0.03" step="0.01">
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label for="alert-medium-threshold-multiplier-input" class="form-label" data-bs-toggle="tooltip" title="中级预警的消耗率阈值 = 基础消耗率 * 此倍数">中级预警倍数 <span class="text-muted fw-normal" style="font-size: 0.8em;">(>1.0, 基础×倍数<2.0)</span>:</label>
+                    <input type="number" id="alert-medium-threshold-multiplier-input" class="form-control" value="1.5" step="0.1">
+                </div>
+                <div class="col-md-2 mb-3 d-flex gap-2">
+                    <button class="btn btn-success flex-grow-1" id="save-alert-config-btn">保存</button>
+                    <button class="btn btn-info flex-grow-1" id="run-analysis-btn">分析</button>
+                </div>
             </div>
-        </details>
-        <div class="row mt-2">
-            <div class="col-md-3 mb-3">
-                <label for="alert-timespan-input" class="form-label">分析时间窗口 (天):</label>
-                <input type="number" id="alert-timespan-input" class="form-control" value="7">
-            </div>
-            <div class="col-md-3 mb-3">
-                <label for="alert-min-daily-consumption-input" class="form-label" data-bs-toggle="tooltip" title="日均消耗量进入此范围才开始进行1级和2级预警判断">关注区间下限 (日耗):</label>
-                <input type="number" id="alert-min-daily-consumption-input" class="form-control" value="5" step="1">
-            </div>
-             <div class="col-md-3 mb-3">
-                <label for="alert-max-daily-consumption-input" class="form-label" data-bs-toggle="tooltip" title="日均消耗量超过此值将直接触发最高级预警">高危日消耗量:</label>
-                <input type="number" id="alert-max-daily-consumption-input" class="form-control" value="20" step="1">
-            </div>
-            <div class="col-md-3 mb-3">
-                <label for="alert-threshold-input" class="form-label" data-bs-toggle="tooltip" title="触发1级预警所需的基础日均消耗率">基础消耗率阈值:</label>
-                <input type="number" id="alert-threshold-input" class="form-control" value="0.03" step="0.01">
-            </div>
-            <div class="col-md-3 mb-3">
-                <label for="alert-medium-threshold-multiplier-input" class="form-label" data-bs-toggle="tooltip" title="中级预警的消耗率阈值 = 基础消耗率 * 此倍数">中级预警倍数:</label>
-                <input type="number" id="alert-medium-threshold-multiplier-input" class="form-control" value="1.5" step="0.1">
-            </div>
-        </div>
-        <button class="btn btn-success" id="save-alert-config-btn">保存预警规则</button>
-        <button class="btn btn-info" id="run-analysis-btn">立即执行一次分析</button>
-        </div>
-    </div>
-</div>
 
-<!-- 库存预警 -->
-<div class="card mt-3 d-flex flex-column" style="flex-grow: 1; min-height: 0;">
-    <div class="card-header">
-        <ul class="nav nav-tabs card-header-tabs" id="alertTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="tab-sku" data-region="" onclick="switchAlertTab('')">SKU</button>
-            </li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('菲律宾')">菲</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('马来西亚')">马</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('越南')">越</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('泰国')">泰</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('新加坡')">新</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('台湾')">台</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('美国')">美</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('墨西哥')">墨</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('欧洲')">欧</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('日本')">日</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('加拿大')">加</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('英国')">英</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('澳大利亚')">澳</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('俄罗斯')">俄</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('韩国')">韩</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('印度尼西亚')">印</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('巴西')">巴</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('智利')">智</button></li>
-            <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('哥伦比亚')">哥</button></li>
-        </ul>
-    </div>
-    <div class="card-body d-flex flex-column p-0" style="flex-grow: 1; min-height: 0;">
-        <div class="d-flex h-100">
-            <!-- Alert List -->
-            <div class="h-100 d-flex flex-column border-end" style="width: 1200px; flex: 0 0 1200px;">
-                <div class="table-container flex-grow-1" style="overflow-x: auto; overflow-y: auto;">
-                    <table class="table table-hover table-striped mb-0" style="min-width: 600px;">
-                        <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
-                            <tr>
-                                <th style="width: 25%;">SKU</th>
-                                <th style="width: 15%;">区域</th>
-                                <th style="width: 10%;">级别</th>
-                                <th style="width: 30%;">消耗明细</th>
-                                <th style="width: 20%;">分析日期</th>
-                            </tr>
-                        </thead>
-                        <tbody id="alertsList">
-                            <tr><td colspan="5" class="text-center">加载中...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="d-flex justify-content-center align-items-center p-2 border-top bg-light flex-grow-1">
-                    <div class="me-3">
-                        <label for="alerts-rows-per-page-select" class="form-label me-2 mb-0 d-inline-block">每页显示:</label>
-                        <select class="form-select form-select-sm d-inline-block" id="alerts-rows-per-page-select" style="width: auto;">
-                            <option value="20">20</option>
-                            <option value="50" selected>50</option>
-                            <option value="100">100</option>
-                        </select>
-                    </div>
-                    <nav>
-                        <ul class="pagination mb-0" id="alerts-pagination">
-                            <!-- Pagination links will be generated here -->
-                        </ul>
-                    </nav>
-                </div>
-            </div>
-            
-            <!-- Chart Area -->
-            <div class="flex-grow-1 h-100 d-flex flex-column bg-white" style="min-width: 0;">
-                <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 text-muted" id="alert-chart-title">选择一个预警查看详情</h6>
-                </div>
-                <div class="flex-grow-1 p-2 position-relative" style="min-height: 0;">
-                    <canvas id="alert-inventory-chart"></canvas>
-                    <div id="alert-chart-placeholder" class="d-flex justify-content-center align-items-center h-100 text-muted">
-                        <i class="fas fa-chart-line fa-3x me-3 opacity-25"></i>
-                        <span>点击左侧 SKU 查看库存趋势</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- SKU Image Modal -->
-<div class="modal fade" id="skuImageModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="skuImageModalLabel">商品图片</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body text-center">
-                <img id="modal-sku-image" src="" class="img-fluid" alt="SKU Image">
-                <h5 class="mt-2" id="modal-sku-name"></h5>
             </div>
         </div>
     </div>
-</div>
+
+    <!-- 库存预警 -->
+    <div class="card mt-3 d-flex flex-column" style="flex-grow: 1; min-height: 0;">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" id="alertTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="tab-sku" data-region=""
+                        onclick="switchAlertTab('')">SKU</button>
+                </li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('菲律宾')">菲</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('马来西亚')">马</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('越南')">越</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('泰国')">泰</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('新加坡')">新</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('台湾')">台</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('美国')">美</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('墨西哥')">墨</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('欧洲')">欧</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('日本')">日</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('加拿大')">加</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('英国')">英</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('澳大利亚')">澳</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('俄罗斯')">俄</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('韩国')">韩</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('印度尼西亚')">印</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('巴西')">巴</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('智利')">智</button></li>
+                <li class="nav-item"><button class="nav-link" onclick="switchAlertTab('哥伦比亚')">哥</button></li>
+            </ul>
+        </div>
+        <div class="card-body d-flex flex-column p-0" style="flex-grow: 1; min-height: 0;">
+            <div class="d-flex h-100">
+                <!-- Alert List -->
+                <div class="h-100 d-flex flex-column border-end" style="width: 1200px; flex: 0 0 1200px;">
+                    <div class="table-container flex-grow-1" style="overflow-x: auto; overflow-y: auto;">
+                        <table class="table table-hover table-striped mb-0" style="min-width: 600px;">
+                            <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
+                                <tr>
+                                    <th style="width: 25%;">SKU</th>
+                                    <th style="width: 15%;">区域</th>
+                                    <th style="width: 10%;">级别</th>
+                                    <th style="width: 30%;">消耗明细</th>
+                                    <th style="width: 20%;">分析日期</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alertsList">
+                                <tr>
+                                    <td colspan="5" class="text-center">加载中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-center align-items-center p-2 border-top bg-light flex-grow-1">
+                        <div class="me-3">
+                            <label for="alerts-rows-per-page-select"
+                                class="form-label me-2 mb-0 d-inline-block">每页显示:</label>
+                            <select class="form-select form-select-sm d-inline-block" id="alerts-rows-per-page-select"
+                                style="width: auto;">
+                                <option value="20">20</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                        <nav>
+                            <ul class="pagination mb-0" id="alerts-pagination">
+                                <!-- Pagination links will be generated here -->
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+
+                <!-- Chart Area -->
+                <div class="flex-grow-1 h-100 d-flex flex-column bg-white" style="min-width: 0;">
+                    <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 text-muted" id="alert-chart-title">选择一个预警查看详情</h6>
+                    </div>
+                    <div class="flex-grow-1 p-2 position-relative" style="min-height: 0;">
+                        <canvas id="alert-inventory-chart"></canvas>
+                        <div id="alert-chart-placeholder"
+                            class="d-flex justify-content-center align-items-center h-100 text-muted">
+                            <i class="fas fa-chart-line fa-3x me-3 opacity-25"></i>
+                            <span>点击左侧 SKU 查看库存趋势</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SKU Image Modal -->
+    <div class="modal fade" id="skuImageModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="skuImageModalLabel">商品图片</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="modal-sku-image" src="" class="img-fluid" alt="SKU Image">
+                    <h5 class="mt-2" id="modal-sku-name"></h5>
+                </div>
+            </div>
+        </div>
+    </div>

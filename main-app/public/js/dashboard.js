@@ -413,6 +413,42 @@ async function saveAlertConfig() {
         alert_max_daily_consumption: document.getElementById('alert-max-daily-consumption-input').value,
         alert_medium_threshold_multiplier: document.getElementById('alert-medium-threshold-multiplier-input').value,
     };
+
+    // --- 参数校验 Start ---
+    const baseThreshold = parseFloat(configs.alert_threshold);
+    const multiplier = parseFloat(configs.alert_medium_threshold_multiplier);
+    const minConsumption = parseFloat(configs.alert_min_daily_consumption);
+    const maxConsumption = parseFloat(configs.alert_max_daily_consumption);
+
+    if (isNaN(baseThreshold) || baseThreshold <= 0 || baseThreshold > 1.0) {
+        showCommonModal('参数错误', '基础消耗率阈值必须在 0 到 1.0 (100%) 之间。<br>例如：0.1 代表每天消耗库存的 10%。');
+        return;
+    }
+
+    if (isNaN(multiplier) || multiplier <= 1.0) {
+        showCommonModal('参数错误', '中级预警倍数必须大于 1.0，否则中级预警将失去意义。');
+        return;
+    }
+
+    // 检查中级预警是否过高 ( > 200%)
+    if ((baseThreshold * multiplier) > 2.0) {
+        const msg = `警告：当前设置会导致中级预警阈值高达 ${(baseThreshold * multiplier * 100).toFixed(0)}%。<br><br>` +
+                    `这意味着只有在半天内卖光所有库存才能触发中级预警，这会导致系统实际上无法发出预警。<br><br>` +
+                    `建议调整参数，确保 (基础阈值 x 倍数) 小于 2.0。`;
+        showCommonModal('参数警告', msg);
+        return; 
+    }
+
+    if (isNaN(minConsumption) || minConsumption < 0) {
+        showCommonModal('参数错误', '关注区间下限不能为负数。');
+        return;
+    }
+
+    if (isNaN(maxConsumption) || maxConsumption <= minConsumption) {
+        showCommonModal('参数错误', '高危日消耗量必须大于关注区间下限。');
+        return;
+    }
+    // --- 参数校验 End ---
     
     try {
         await apiRequest('/api/inventory/system-configs', 'POST', { configs });

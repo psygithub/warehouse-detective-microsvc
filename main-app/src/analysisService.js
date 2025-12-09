@@ -67,8 +67,9 @@ async function runInventoryAnalysis(trackedSkuId = null) {
                 
                 let alertLevel = 0;
 
-                if (dailyConsumption > maxConsumption) {
-                    alertLevel = 3; // High Severity: Consumption volume is the only factor
+                // 3级预警: 高日耗量 OR 极速消耗(库存不足3天)
+                if (dailyConsumption > maxConsumption || consumptionRate > 0.33) {
+                    alertLevel = 3; // High Severity
                 } else if (dailyConsumption >= minConsumption) {
                     if (consumptionRate > mediumThreshold) {
                         alertLevel = 2; // Medium Severity
