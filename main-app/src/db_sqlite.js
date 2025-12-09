@@ -562,7 +562,18 @@ function getRegionalInventoryHistoryForSku(tracked_sku_id, days) {
     const startDate = `${year}-${month}-${day}`;
     return db.prepare(`SELECT * FROM regional_inventory_history WHERE tracked_sku_id = ? AND record_date >= ? ORDER BY record_date ASC`).all(tracked_sku_id, startDate);
 }
-function getRegionalInventoryHistoryBySkuId(skuId) { return db.prepare('SELECT * FROM regional_inventory_history WHERE tracked_sku_id = ? ORDER BY record_date ASC').all(skuId); }
+function getRegionalInventoryHistoryBySkuId(skuId, region = null) {
+    let query = "SELECT * FROM regional_inventory_history WHERE tracked_sku_id = ? AND region_name != '中国'";
+    const params = [skuId];
+
+    if (region) {
+        query += ' AND region_name = ?';
+        params.push(region);
+    }
+
+    query += ' ORDER BY record_date ASC';
+    return db.prepare(query).all(...params);
+}
 function getLatestRegionalInventoryHistory(allowedSkuIds = null) {
     let query = `
         SELECT t1.* 

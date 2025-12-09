@@ -123,8 +123,8 @@
             return;
         }
 
-        tableHead.innerHTML = '<tr><th>加载中...</th></tr>';
-        tableBody.innerHTML = '<tr><td colspan="100%" class="text-center">加载中...</td></tr>';
+        const tableContainer = tableHead.closest('.table-container');
+        showLoading(tableContainer);
 
         try {
             const data = await apiRequest(`/api/inventory/pivot-history?page=${currentPage}&limit=${rowsPerPage}`);
@@ -270,6 +270,8 @@
             if (tableHead) {
                 tableHead.innerHTML = `<tr><th class="text-danger">加载失败: ${error.message}</th></tr>`;
             }
+        } finally {
+            hideLoading(tableContainer);
         }
     }
 

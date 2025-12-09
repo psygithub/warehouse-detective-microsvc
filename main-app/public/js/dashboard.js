@@ -5,6 +5,10 @@ window.loadAlerts = async function(page = 1) {
         console.error('Dashboard alerts container #alertsList not found in the DOM.');
         return;
     }
+    
+    const tableContainer = container.closest('.table-container');
+    showLoading(tableContainer);
+
     try {
         currentAlertsPage = page;
         // Read the value from the select dropdown each time
@@ -27,6 +31,8 @@ window.loadAlerts = async function(page = 1) {
     } catch (error) {
         console.error('加载预警失败:', error);
         container.innerHTML = '<tr><td colspan="5" class="text-danger text-center">加载预警失败</td></tr>';
+    } finally {
+        hideLoading(tableContainer);
     }
 }
 
@@ -197,7 +203,7 @@ function displayAlerts(alerts) {
         const consumptionDetail = `<div style="white-space: nowrap;">${detailParts.join(' | ')}</div>`;
 
         html += `
-            <tr class="${rowClass} alert-row" data-id="${alert.id}" data-sku-id="${alert.tracked_sku_id}" data-sku="${alert.sku}" data-image="${alert.product_image || ''}" style="cursor: pointer;">
+            <tr class="${rowClass} alert-row" data-id="${alert.id}" data-sku-id="${alert.tracked_sku_id}" data-sku="${alert.sku}" data-image="${alert.product_image || ''}" data-region="${alert.region_name || ''}" style="cursor: pointer;">
                 <td>
                     <span class="sku-text text-primary" style="cursor: pointer; text-decoration: underline;">${alert.sku}</span>
                 </td>
@@ -233,12 +239,13 @@ async function handleAlertListClick(event) {
     // Handle row click for chart
     const skuId = row.dataset.skuId;
     const sku = row.dataset.sku;
+    const region = row.dataset.region;
     
     // Highlight active row
     document.querySelectorAll('.alert-row').forEach(r => r.classList.remove('table-active', 'border-primary', 'border-2'));
     row.classList.add('table-active', 'border-primary', 'border-2');
 
-    await loadAlertChart(skuId, sku);
+    await loadAlertChart(skuId, sku, region);
 }
 
 async function showSkuImage(skuId, sku, imageUrl) {
@@ -273,17 +280,24 @@ async function showSkuImage(skuId, sku, imageUrl) {
     }
 }
 
-async function loadAlertChart(skuId, skuName) {
+async function loadAlertChart(skuId, skuName, region) {
     const chartTitle = document.getElementById('alert-chart-title');
     const chartPlaceholder = document.getElementById('alert-chart-placeholder');
     const chartCanvas = document.getElementById('alert-inventory-chart');
+    const chartContainer = chartCanvas.parentElement;
 
     chartTitle.textContent = `库存趋势: ${skuName}`;
     if(chartPlaceholder) chartPlaceholder.style.display = 'none';
     if(chartCanvas) chartCanvas.style.display = 'block';
+    
+    showLoading(chartContainer);
 
     try {
-        const data = await apiRequest(`/api/inventory/regional-history/${skuId}`);
+        let url = `/api/inventory/regional-history/${skuId}`;
+        if (region) {
+            url += `?region=${encodeURIComponent(region)}`;
+        }
+        const data = await apiRequest(url);
         if (data && data.history) {
             renderAlertChart(data.history);
         } else {
@@ -300,6 +314,8 @@ async function loadAlertChart(skuId, skuName) {
     } catch (error) {
         console.error('Failed to load chart data:', error);
         chartTitle.textContent = `加载失败: ${skuName}`;
+    } finally {
+        hideLoading(chartContainer);
     }
 }
 

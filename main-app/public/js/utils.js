@@ -73,8 +73,42 @@ function showCommonModal(title, content) {
     }
 }
 
+// 显示加载动画
+function showLoading(element) {
+    if (!element) return;
+    // 检查是否已经存在加载动画
+    if (element.querySelector('.custom-loader')) return;
+
+    const loader = document.createElement('div');
+    loader.className = 'custom-loader d-flex justify-content-center align-items-center position-absolute top-0 start-0 w-100 h-100 bg-white bg-opacity-75';
+    loader.style.zIndex = '1000';
+    loader.innerHTML = `
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    `;
+    
+    // 确保父元素有定位上下文
+    if (window.getComputedStyle(element).position === 'static') {
+        element.classList.add('position-relative');
+    }
+    
+    element.appendChild(loader);
+}
+
+// 隐藏加载动画
+function hideLoading(element) {
+    if (!element) return;
+    const loader = element.querySelector('.custom-loader');
+    if (loader) {
+        loader.remove();
+    }
+}
+
 // 导出函数到全局作用域
 window.showToast = showToast;
 window.formatDate = formatDate;
 window.confirmAction = confirmAction;
 window.showCommonModal = showCommonModal;
+window.showLoading = showLoading;
+window.hideLoading = hideLoading;

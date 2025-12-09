@@ -133,10 +133,10 @@ router.get('/history/:skuId', (req, res) => {
 router.get('/regional-history/:skuId', (req, res) => {
     console.log(`[API Entry] GET /api/inventory/regional-history/:skuId`);
     const { skuId } = req.params;
+    const { region } = req.query;
     try {
-        let history = database.getRegionalInventoryHistoryBySkuId(skuId);
-        // 剔除中国地区的数据
-        history = history.filter(record => record.region_name !== '中国');
+        let history = database.getRegionalInventoryHistoryBySkuId(skuId, region);
+        
         const skuDetails = database.getTrackedSkus().find(s => s.id == skuId);
         res.json({
             history,

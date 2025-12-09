@@ -9,6 +9,10 @@
         currentPage = page;
         rowsPerPage = document.getElementById('rows-per-page-select').value;
         
+        const listBody = document.getElementById('sku-list-body');
+        const listContainer = listBody ? listBody.closest('.card-body') : null;
+        showLoading(listContainer);
+
         let url = `/api/inventory/skus-paginated?page=${page}&limit=${rowsPerPage}`;
         
         const searchInput = document.getElementById('sku-search-input');
@@ -19,22 +23,31 @@
             }
         }
 
-        const response = await apiRequest(url);
-        if (response && response.items) {
-            existingSkus = new Set(response.items.map(s => s.sku));
-            renderSkuList(response.items);
-            window.renderPagination('pagination-links', response.total, page, rowsPerPage, 'loadInventoryConfigSkus');
-            if (response.items.length > 0) {
-                loadHistoryForSku(response.items[0].id);
-                setTimeout(() => {
-                    const firstRow = document.querySelector('#sku-list-body tr');
-                    if (firstRow) {
-                        firstRow.classList.add('table-active');
-                    }
-                }, 0);
-            } else {
-                renderChart([], '无SKU');
+        try {
+            const response = await apiRequest(url);
+            if (response && response.items) {
+                existingSkus = new Set(response.items.map(s => s.sku));
+                renderSkuList(response.items);
+                window.renderPagination('pagination-links', response.total, page, rowsPerPage, 'loadInventoryConfigSkus');
+                if (response.items.length > 0) {
+                    loadHistoryForSku(response.items[0].id);
+                    setTimeout(() => {
+                        const firstRow = document.querySelector('#sku-list-body tr');
+                        if (firstRow) {
+                            firstRow.classList.add('table-active');
+                        }
+                    }, 0);
+                } else {
+                    renderChart([], '无SKU');
+                }
             }
+        } catch (error) {
+            console.error('加载 SKU 列表失败:', error);
+            if (listBody) {
+                listBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">加载失败</td></tr>';
+            }
+        } finally {
+            hideLoading(listContainer);
         }
     }
 
@@ -285,22 +298,32 @@
     }
 
     async function loadHistoryForSku(skuId) {
-        const data = await apiRequest(`/api/inventory/regional-history/${skuId}`);
-        const productImage = document.getElementById('product-image');
-        const chartSkuName = document.getElementById('chart-sku-name');
-        if (data) {
-            chartSkuName.textContent = `SKU: ${data.sku}`;
-            renderChart(data.history, data.sku);
-            if (data.product_image) {
-                productImage.src = data.product_image;
-                productImage.style.display = 'block';
+        const chartCanvas = document.getElementById('inventory-chart');
+        const chartContainer = chartCanvas ? chartCanvas.parentElement : null;
+        showLoading(chartContainer);
+
+        try {
+            const data = await apiRequest(`/api/inventory/regional-history/${skuId}`);
+            const productImage = document.getElementById('product-image');
+            const chartSkuName = document.getElementById('chart-sku-name');
+            if (data) {
+                chartSkuName.textContent = `SKU: ${data.sku}`;
+                renderChart(data.history, data.sku);
+                if (data.product_image) {
+                    productImage.src = data.product_image;
+                    productImage.style.display = 'block';
+                } else {
+                    productImage.style.display = 'none';
+                }
             } else {
+                chartSkuName.textContent = '选择一个 SKU 查看历史记录';
                 productImage.style.display = 'none';
+                renderChart([], '');
             }
-        } else {
-            chartSkuName.textContent = '选择一个 SKU 查看历史记录';
-            productImage.style.display = 'none';
-            renderChart([], '');
+        } catch (error) {
+            console.error('加载历史数据失败:', error);
+        } finally {
+            hideLoading(chartContainer);
         }
     }
 
