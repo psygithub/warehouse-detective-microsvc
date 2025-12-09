@@ -109,7 +109,8 @@ router.post('/inventory/check-sku', auth.authenticateToken.bind(auth), async (re
 router.post('/:id/approve', auth.authenticateToken.bind(auth), async (req, res) => {
     try {
         const orderId = req.params.id;
-        const result = await orderService.approveOrder(orderId);
+        const authInfo = await xizhiyueClient.getAuthInfo();
+        const result = await orderService.approveOrder(orderId,authInfo.token);
         res.json(result);
     } catch (error) {
         console.error('审核失败:', error);

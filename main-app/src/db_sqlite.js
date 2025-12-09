@@ -669,20 +669,28 @@ function getActiveAlerts(limit = 100) {
 
 function getActiveAlertsPaginated({ page = 1, limit = 50, region = null }) {
     const offset = (page - 1) * limit;
-    let whereClause = "WHERE status = 'ACTIVE'";
+    let whereClause = "WHERE pa.status = 'ACTIVE'";
     const params = [];
 
     if (region) {
-        whereClause += " AND region_name LIKE ?";
+        whereClause += " AND pa.region_name LIKE ?";
         params.push(`%${region}%`);
     }
 
     // 首先，获取总记录数
-    const totalStmt = db.prepare(`SELECT COUNT(*) as total FROM product_alerts ${whereClause}`);
+    const totalStmt = db.prepare(`SELECT COUNT(*) as total FROM product_alerts pa ${whereClause}`);
     const { total } = totalStmt.get(...params);
 
-    // 然后，获取分页后的数据
-    const itemsStmt = db.prepare(`SELECT * FROM product_alerts ${whereClause} ORDER BY updated_at DESC, created_at DESC, alert_level DESC LIMIT ? OFFSET ?`);
+    // 然后，获取分页后的数据，关联 tracked_skus 表获取 product_image
+    const sql = `
+        SELECT pa.*, ts.product_image 
+        FROM product_alerts pa 
+        LEFT JOIN tracked_skus ts ON pa.tracked_sku_id = ts.id 
+        ${whereClause} 
+        ORDER BY pa.updated_at DESC, pa.created_at DESC, pa.alert_level DESC 
+        LIMIT ? OFFSET ?
+    `;
+    const itemsStmt = db.prepare(sql);
     const items = itemsStmt.all(...params, limit, offset);
 
     return {

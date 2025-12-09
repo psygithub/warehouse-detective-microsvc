@@ -77,16 +77,7 @@ window.sectionInitializers.dashboard = async () => {
         // Event delegation for alert list clicks
         const alertsList = document.getElementById('alertsList');
         if (alertsList) {
-            alertsList.addEventListener('click', function(event) {
-                const headerRow = event.target.closest('.alert-row');
-                if (headerRow) {
-                    const alertId = headerRow.dataset.id;
-                    const detailRow = document.querySelector(`.alert-details-row[data-id="${alertId}"]`);
-                    if (detailRow) {
-                        detailRow.classList.toggle('d-none');
-                    }
-                }
-            });
+            alertsList.addEventListener('click', handleAlertListClick);
         }
 
         // Bind alert config events
@@ -206,8 +197,10 @@ function displayAlerts(alerts) {
         const consumptionDetail = `<div style="white-space: nowrap;">${detailParts.join(' | ')}</div>`;
 
         html += `
-            <tr class="${rowClass}">
-                <td>${alert.sku}</td>
+            <tr class="${rowClass} alert-row" data-id="${alert.id}" data-sku-id="${alert.tracked_sku_id}" data-sku="${alert.sku}" data-image="${alert.product_image || ''}" style="cursor: pointer;">
+                <td>
+                    <span class="sku-text text-primary" style="cursor: pointer; text-decoration: underline;">${alert.sku}</span>
+                </td>
                 <td style="${isRegionHidden ? 'display:none;' : ''}">${alert.region_name}</td>
                 <td>${getBadgeForLevel(alert.alert_level)}</td>
                 <td>${consumptionDetail}</td>
@@ -216,6 +209,158 @@ function displayAlerts(alerts) {
         `;
     });
     container.innerHTML = html;
+}
+
+// Global variable to hold the chart instance
+let alertInventoryChart = null;
+
+async function handleAlertListClick(event) {
+    const target = event.target;
+    const row = target.closest('.alert-row');
+    
+    if (!row) return;
+
+    // Handle SKU click for image popup
+    if (target.classList.contains('sku-text')) {
+        event.stopPropagation();
+        const skuId = row.dataset.skuId;
+        const sku = row.dataset.sku;
+        const image = row.dataset.image;
+        showSkuImage(skuId, sku, image);
+        return;
+    }
+
+    // Handle row click for chart
+    const skuId = row.dataset.skuId;
+    const sku = row.dataset.sku;
+    
+    // Highlight active row
+    document.querySelectorAll('.alert-row').forEach(r => r.classList.remove('table-active', 'border-primary', 'border-2'));
+    row.classList.add('table-active', 'border-primary', 'border-2');
+
+    await loadAlertChart(skuId, sku);
+}
+
+async function showSkuImage(skuId, sku, imageUrl) {
+    try {
+        const modalImg = document.getElementById('modal-sku-image');
+        const modalTitle = document.getElementById('modal-sku-name');
+        
+        if (imageUrl) {
+            modalImg.src = imageUrl;
+            modalTitle.textContent = sku;
+        } else {
+            // Fallback: fetch from history endpoint if no image url provided
+            // Optimally we should have image url in the list response to avoid extra call, 
+            // but let's check if we can get it from history endpoint which returns sku info
+             const data = await apiRequest(`/api/inventory/regional-history/${skuId}`);
+             
+             if (data && data.product_image) {
+                 modalImg.src = data.product_image;
+                 modalTitle.textContent = `${sku} - ${data.sku}`; // Using SKU from data in case passed one is different
+             } else {
+                 modalImg.src = 'https://via.placeholder.com/400x400?text=No+Image';
+                 modalTitle.textContent = sku;
+             }
+        }
+         
+         const modal = new bootstrap.Modal(document.getElementById('skuImageModal'));
+         modal.show();
+
+    } catch (error) {
+        console.error('Failed to load SKU image:', error);
+        showCommonModal('错误', '无法加载图片信息');
+    }
+}
+
+async function loadAlertChart(skuId, skuName) {
+    const chartTitle = document.getElementById('alert-chart-title');
+    const chartPlaceholder = document.getElementById('alert-chart-placeholder');
+    const chartCanvas = document.getElementById('alert-inventory-chart');
+
+    chartTitle.textContent = `库存趋势: ${skuName}`;
+    if(chartPlaceholder) chartPlaceholder.style.display = 'none';
+    if(chartCanvas) chartCanvas.style.display = 'block';
+
+    try {
+        const data = await apiRequest(`/api/inventory/regional-history/${skuId}`);
+        if (data && data.history) {
+            renderAlertChart(data.history);
+        } else {
+            // Handle no data case
+             if (alertInventoryChart) {
+                alertInventoryChart.destroy();
+                alertInventoryChart = null;
+            }
+            const ctx = chartCanvas.getContext('2d');
+            ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+            ctx.textAlign = 'center';
+            ctx.fillText('暂无数据', chartCanvas.width / 2, chartCanvas.height / 2);
+        }
+    } catch (error) {
+        console.error('Failed to load chart data:', error);
+        chartTitle.textContent = `加载失败: ${skuName}`;
+    }
+}
+
+function renderAlertChart(historyData) {
+    const chartCanvas = document.getElementById('alert-inventory-chart');
+    if (alertInventoryChart) {
+        alertInventoryChart.destroy();
+    }
+
+    const historyByRegion = historyData.reduce((acc, record) => {
+        const region = record.region_name || '未知区域';
+        if (!acc[region]) {
+            acc[region] = [];
+        }
+        acc[region].push({ x: record.record_date, y: record.qty });
+        return acc;
+    }, {});
+
+    const datasets = Object.keys(historyByRegion).map((region, index) => {
+        const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
+        return {
+            label: region,
+            data: historyByRegion[region],
+            borderColor: colors[index % colors.length],
+            backgroundColor: colors[index % colors.length] + '33',
+            tension: 0.1,
+            fill: false,
+        };
+    });
+
+    alertInventoryChart = new Chart(chartCanvas, {
+        type: 'line',
+        data: { datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'day',
+                        tooltipFormat: 'yyyy-MM-dd',
+                    },
+                    title: { display: true, text: '日期' }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: '库存数量' }
+                }
+            },
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        title: (context) => `日期: ${context[0].label}`,
+                        label: (context) => `${context.dataset.label}: ${context.parsed.y} 件`,
+                    }
+                }
+            }
+        }
+    });
 }
 
 async function loadAlertConfigs() {
