@@ -1,0 +1,18 @@
+{
+    "_comment": "这是应用的配置文件。修改后只需刷新页面即可生效，无需重新部署。",
+    
+    "apiPrefix": "",
+    "_apiPrefix_comment": "API 接口的基础路径。",
+    "_apiPrefix_examples": [
+        "空字符串 \"\" (推荐): 使用相对路径。例如页面在 /warehouse/，请求会自动发往 /warehouse/api/...",
+        "绝对路径 \"/warehouse/api\": 强制指定 API 位于 /warehouse/api",
+        "完整 URL \"http://api.example.com\": 前后端分离部署时，指定后端服务器地址"
+    ],
+
+    "staticPrefix": "",
+    "_staticPrefix_comment": "静态资源(如图片、脚本)的基础路径。通常留空即可。",
+    "_staticPrefix_examples": [
+        "空字符串 \"\": 使用相对路径",
+        "CDN 地址 \"https://cdn.example.com/assets\": 将静态资源托管在 CDN 时使用"
+    ]
+}

@@ -1,4 +1,81 @@
+// 全局配置默认值
+window.AppConfig = {
+    apiPrefix: '',
+    staticPrefix: ''
+};
+
+// 加载配置
+const configLoaded = fetch('config.json')
+    .then(response => {
+        if (!response.ok) {
+            // 如果找不到配置文件，可能是开发环境或意图使用默认值
+            // 不抛出错误，静默使用默认值
+            return {};
+        }
+        return response.json();
+    })
+    .then(config => {
+        Object.assign(window.AppConfig, config);
+        // console.log('Configuration loaded:', window.AppConfig);
+    })
+    .catch(error => {
+        console.warn('Failed to load config.json, using defaults.', error);
+    });
+
 // 工具函数
+
+// API 请求函数
+async function apiRequest(url, method = 'GET', body = null) {
+    // 确保配置已加载
+    await configLoaded;
+
+    // 移除开头的 /，使其变成相对路径（如果未配置绝对路径前缀）
+    if (url.startsWith('/') && !url.startsWith('http')) {
+        url = url.substring(1);
+    }
+    
+    // 添加配置的前缀
+    if (window.AppConfig.apiPrefix) {
+        // 如果前缀不以 / 结尾，且 URL 不以 / 开头，添加 /
+        const prefix = window.AppConfig.apiPrefix;
+        if (!prefix.endsWith('/') && !url.startsWith('/')) {
+            url = `${prefix}/${url}`;
+        } else {
+            url = `${prefix}${url}`;
+        }
+    }
+    
+    const token = localStorage.getItem('token');
+    const options = {
+        method,
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    };
+    if (body) {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(body);
+    }
+    const response = await fetch(url, options);
+    
+    // 尝试解析 JSON
+    let data;
+    try {
+        data = await response.json();
+    } catch (e) {
+        data = null;
+    }
+
+    if (!response.ok) {
+        const errorMsg = (data && data.error) ? data.error : `Request failed: ${response.status}`;
+        const error = new Error(errorMsg);
+        error.status = response.status;
+        error.data = data;
+        throw error;
+    }
+    
+    return data;
+}
 
 // 显示 Toast 通知
 function showToast(message, type = 'info') {
@@ -106,6 +183,7 @@ function hideLoading(element) {
 }
 
 // 导出函数到全局作用域
+window.apiRequest = apiRequest;
 window.showToast = showToast;
 window.formatDate = formatDate;
 window.confirmAction = confirmAction;

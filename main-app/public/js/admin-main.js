@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const userStr = localStorage.getItem('user');
 
     if (!token || !userStr) {
-        window.location.href = '/login';
+        window.location.href = 'login';
         return;
     }
 
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // 验证token
     verifyToken().then(valid => {
         if (!valid) {
-            window.location.href = '/login';
+            window.location.href = 'login';
             return;
         }
 
@@ -41,9 +41,7 @@ function startSessionCheck() {
     
     sessionCheckInterval = setInterval(async () => {
         try {
-            const baseUrl = window.location.origin;
-            const fullUrl = new URL('/api/auth/check-session', baseUrl).href;
-            const response = await fetch(fullUrl, {
+            const response = await fetch('api/auth/check-session', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.status === 401) {
@@ -69,9 +67,7 @@ function stopSessionCheck() {
 // 验证token
 async function verifyToken() {
     try {
-        const baseUrl = window.location.origin;
-        const fullUrl = new URL('/api/auth/verify', baseUrl).href;
-        const response = await fetch(fullUrl, {
+        const response = await fetch('api/auth/verify', {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -137,13 +133,13 @@ async function showSection(section) {
     mainContent.innerHTML = '<div class="text-center"><div class="spinner-border"></div></div>';
 
     try {
-        const response = await fetch(`/partials/${section}.html`);
+        const response = await fetch(`partials/${section}.html`);
         if (!response.ok) throw new Error('Failed to load section');
         const html = await response.text();
         mainContent.innerHTML = html;
 
         // 加载相应的JS模块
-        await loadAndExecuteScript(`/js/${section}.js`);
+        await loadAndExecuteScript(`js/${section}.js`);
         
         // 等待浏览器下一帧渲染，确保DOM元素可用
         await new Promise(resolve => requestAnimationFrame(resolve));
@@ -208,5 +204,5 @@ function logout() {
 
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.href = '/login';
+    window.location.href = 'login';
 }

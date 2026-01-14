@@ -51,7 +51,7 @@ router.get('/pending', auth.authenticateToken.bind(auth), async (req, res) => {
         // 存入缓存，5分钟 (300秒)
         cache.set(cacheKey, pendingOrders, 300);
         console.log('[Cache] Set pending orders (TTL: 300s)');
-
+        console.log(`PendingOrders: ${JSON.stringify(pendingOrders)}`);
         res.json({
             items: pendingOrders
         });

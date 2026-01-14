@@ -13,25 +13,82 @@ async function getXizhiyueOrderList(token, page = 1, pageSize = 20) {
         size: pageSize
     };
 
-    const response = await fetch(url, {
-        method: 'POST',
-        body: JSON.stringify(body),
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-    });
+    let lastError = null;
+    const maxRetries = 3;
 
-    const responseText = await response.text();
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                body: JSON.stringify(body),
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+            });
 
-    console.log(`[LOG] [order_list API] . RAW TEXT: ${responseText}`);
-    if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+            const responseText = await response.text();
+
+            console.log(`[LOG] [order_list API] Attempt ${attempt}. RAW TEXT: ${responseText}`);
+            if (!response.ok) {
+                throw new Error(`API request failed with status ${response.status}`);
+            }
+
+            let responseData;
+            try {
+                responseData = JSON.parse(responseText);
+            } catch (e) {
+                throw new Error(`Failed to parse API response: ${responseText}`);
+            }
+
+            if (responseData.code !== 0) {
+                // 特殊处理 PHP 命名空间冲突错误
+                if (responseData.message && responseData.message.includes('Cannot use') && responseData.message.includes('as') && responseData.message.includes('because the name is already in use')) {
+                    console.warn(`[WARNING] 检测到远程服务器 PHP 命名空间冲突错误 (Attempt ${attempt}): ${responseData.message}`);
+                    // 这种错误通常是服务器端代码问题，重试可能无效，但也可能是部署过程中的瞬间状态
+                }
+                throw new Error(`API Error: ${responseData.message || 'Unknown error'}`);
+            }
+
+            const orders = responseData.data && responseData.data.data ? responseData.data.data : [];
+            return extractedOrdersFromData(orders);
+
+        } catch (error) {
+            console.warn(`[WARNING] getXizhiyueOrderList attempt ${attempt} failed: ${error.message}`);
+            lastError = error;
+            if (attempt < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // 递增等待
+            }
+        }
     }
+    
+    throw lastError;
+}
 
-    const responseData = JSON.parse(responseText);
-    if (responseData.code !== 0) {
-        throw new Error(`API Error: ${responseData.message || 'Unknown error'}`);
-    }
+function extractedOrdersFromData(orders) {
+    return orders.map(order => ({
+        global_order_no: order.global_order_no,
+        shop_name: order.shop_name,
+        place_order_time: order.place_order_time,
+        amount: order.amount,
+        xy_country: order.xy_country,
+        country:order.country_code_desc,
+        order_status: order.order_status,
+        order_status_desc: getStatusDesc(order.order_status),
+        order_sub_status: order.order_sub_status,
+        order_sub_status_desc: getStatusDesc(order.order_sub_status),
+        currency: order.currency,
+        order_items: (order.order_items || []).map(item => ({
+            ...item, // 保留原始的所有字段，防止漏掉
+            picture_url: item.picture_url,
+            platform_order_goods_no: item.platform_order_goods_no,
+            platform_seller_sku: item.platform_seller_sku,
+            xy_sku: item.xy_sku,
+            sell_price: item.sell_price,
+            quantity: item.quantity
+        }))
+    }));
+}
 
-    const orders = responseData.data && responseData.data.data ? responseData.data.data : [];
+// 保留旧函数名以兼容引用，实际上 logic 已移入 extractedOrdersFromData
+async function _old_getXizhiyueOrderList_logic_placeholder() {
     
     const extractedOrders = orders.map(order => ({
         global_order_no: order.global_order_no,

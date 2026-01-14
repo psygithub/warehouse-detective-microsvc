@@ -26,7 +26,7 @@ async function loadOrders(isRefresh = false) {
     try {
         const token = localStorage.getItem('token');
         // 调用新的后端接口，不再直接调用 /api/orders
-        const response = await fetch(`/api/orders/pending?isRefresh=${isRefresh}`, {
+        const response = await fetch(`api/orders/pending?isRefresh=${isRefresh}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -42,7 +42,7 @@ async function loadOrders(isRefresh = false) {
         const newOrdersCount = targetOrders.filter(o => o.order_status === OrderStatus.PAID_PENDING_AUDIT).length;
         
         if (newOrdersCountEl) newOrdersCountEl.textContent = newOrdersCount;
-
+        console.log(`ordersList: ${JSON.stringify(targetOrders)}`);
         renderOrders(ordersList, targetOrders);
 
     } catch (error) {
@@ -112,7 +112,7 @@ function renderOrders(container, orders) {
                     <td>${order.shop_name}</td>
                     <td>${order.country || '-'}</td>
                     <td>${formatDate(order.place_order_time)}</td>
-                    <td class="text-amount">¥${order.amount}</td>
+                    <td class="text-amount"> ${order.currency}-${order.amount}</td>
                     
                     <td class="text-center">
                         ${item.picture_url ? 
@@ -122,7 +122,7 @@ function renderOrders(container, orders) {
                     <td>${item.platform_order_goods_no || '-'}</td>
                     <td>${item.platform_seller_sku || '-'}</td>
                     <td class="text-primary fw-bold">${item.xy_sku || '-'}</td>
-                    <td>${item.sell_price ? '¥' + item.sell_price : '-'}</td>
+                    <td>${item.sell_price ? order.currency + '-' + item.sell_price : '-'}</td>
                     <td>${item.quantity ? 'x' + item.quantity : '-'}</td>
                     <td>${actionButtons}</td>
                 </tr>
@@ -177,7 +177,7 @@ async function checkInventory(orderId, country, itemsData) {
         if (!sku) continue;
 
         try {
-            const response = await fetch('/api/orders/inventory/check-sku', {
+            const response = await fetch('api/orders/inventory/check-sku', {
                 method: 'POST',
                 headers: { 
                     'Authorization': `Bearer ${token}`,
@@ -238,7 +238,7 @@ async function approveOrder(orderId) {
     if (!confirm('确定要审核通过吗？')) return;
     try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`/api/orders/${orderId}/approve`, {
+        const response = await fetch(`api/orders/${orderId}/approve`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -256,7 +256,7 @@ async function applyTrackingNo(orderId) {
     if (!confirm('确定要为该订单申请运单号吗？')) return;
     try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`/api/orders/${orderId}/apply-tracking`, {
+        const response = await fetch(`api/orders/${orderId}/apply-tracking`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
         });

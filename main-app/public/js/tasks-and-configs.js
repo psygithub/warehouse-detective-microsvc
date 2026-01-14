@@ -1,22 +1,3 @@
-// Helper API request function
-async function apiRequest(url, method = 'GET', body = null) {
-    const token = localStorage.getItem('token');
-    const options = {
-        method,
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
-    };
-    if (body) {
-        options.headers['Content-Type'] = 'application/json';
-        options.body = JSON.stringify(body);
-    }
-    const response = await fetch(url, options);
-    if (!response.ok) {
-        throw new Error(`Request failed: ${response.status}`);
-    }
-    return response.json();
-}
 
 // A robust function to wait for an element to be available in the DOM
 function waitForElement(selector, timeout = 5000) {

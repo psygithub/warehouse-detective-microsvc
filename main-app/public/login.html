@@ -156,6 +156,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/utils.js"></script>
     <script>
         let isLoginMode = true;
 
@@ -190,37 +191,26 @@
             const password = document.getElementById('password').value;
             
             try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ username, password })
-                });
+                const data = await apiRequest('api/auth/login', 'POST', { username, password });
                 
-                const data = await response.json();
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                // 将 token 存入 cookie 以便进行服务器端页面保护
+                document.cookie = `token=${data.token};path=/;max-age=86400`; // 有效期1天
                 
-                if (response.ok) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    // 将 token 存入 cookie 以便进行服务器端页面保护
-                    document.cookie = `token=${data.token};path=/;max-age=86400`; // 有效期1天
-                    
-                    showSuccess('登录成功！正在跳转...');
-                    
-                    setTimeout(() => {
-                        // 根据用户角色跳转
-                        if (data.user.role === 'admin') {
-                            window.location.href = '/admin.html';
-                        } else {
-                            window.location.href = '/user.html'; 
-                        }
-                    }, 1000);
-                } else {
-                    showError(data.error);
-                }
+                showSuccess('登录成功！正在跳转...');
+                
+                setTimeout(() => {
+                    // 根据用户角色跳转
+                    if (data.user.role === 'admin') {
+                        window.location.href = 'admin.html';
+                    } else {
+                        window.location.href = 'user.html'; 
+                    }
+                }, 1000);
+
             } catch (error) {
-                showError('登录失败，请检查网络连接');
+                showError(error.message || '登录失败，请检查网络连接');
             }
         });
 
@@ -239,30 +229,18 @@
             }
             
             try {
-                const response = await fetch('/api/auth/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ username, email, password })
-                });
+                const data = await apiRequest('api/auth/register', 'POST', { username, email, password });
                 
-                const data = await response.json();
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
                 
-                if (response.ok) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    
-                    showSuccess('注册成功！正在跳转...');
-                    
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 1000);
-                } else {
-                    showError(data.error);
-                }
+                showSuccess('注册成功！正在跳转...');
+                
+                setTimeout(() => {
+                    window.location.href = './';
+                }, 1000);
             } catch (error) {
-                showError('注册失败，请检查网络连接');
+                showError(error.message || '注册失败，请检查网络连接');
             }
         });
 
@@ -293,20 +271,14 @@
             const token = localStorage.getItem('token');
             if (token) {
                 // 验证token是否有效
-                fetch('/api/auth/verify', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                })
-                .then(async response => {
-                    if (response.ok) {
-                        const { user } = await response.json();
-                        // 已登录，根据角色跳转
-                        if (user.role === 'admin') {
-                            window.location.href = '/admin.html';
-                        } else {
-                            window.location.href = '/user.html';
-                        }
+                apiRequest('api/auth/verify')
+                .then(data => {
+                    const user = data.user;
+                    // 已登录，根据角色跳转
+                    if (user.role === 'admin') {
+                        window.location.href = 'admin.html';
+                    } else {
+                        window.location.href = 'user.html';
                     }
                 })
                 .catch(() => {
