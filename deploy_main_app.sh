@@ -20,7 +20,7 @@
 # =============================================================================
 
 # --- 配置区域 ---
-APP_CONTAINER_NAME="warehouse-detective-app"
+APP_CONTAINER_NAME="warehouse"
 APP_IMAGE_NAME="warehouse-detective"
 DOCKER_NETWORK="waredetective-net"
 APP_PORT=3000
