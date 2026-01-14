@@ -16,7 +16,7 @@
 # =============================================================================
 
 # --- 在这里配置您的变量 ---
-APP_CONTAINER_NAME="warehouse-detective-app"
+APP_CONTAINER_NAME="warehouse"
 APP_IMAGE_NAME="warehouse-detective"
 
 PLAYWRIGHT_CONTAINER_NAME="playwright-service"

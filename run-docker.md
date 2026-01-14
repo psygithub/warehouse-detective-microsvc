@@ -70,7 +70,7 @@ docker run -d --name playwright-service --network waredetective-net -p 3001:3001
 **重要**: 请确保将 `/path/to/your/data`, `/path/to/your/output`, `/path/to/your/config` 替换为您本地相应目录的**绝对路径**。
 
 ```bash
-docker run -d --name warehouse-detective-app --network waredetective-net -p 3000:3000 --restart always -v /path/to/your/data:/app/data -v /path/to/your/output:/app/output -v /path/to/your/config:/app/config -e "PLAYWRIGHT_SERVICE_URL=http://playwright-service:3001" warehouse-detective:latest
+docker run -d --name warehouse --network waredetective-net -p 3000:3000 --restart always -v /path/to/your/data:/app/data -v /path/to/your/output:/app/output -v /path/to/your/config:/app/config -e "PLAYWRIGHT_SERVICE_URL=http://playwright-service:3001" warehouse-detective:latest
 ```
 
 ---
@@ -79,10 +79,10 @@ docker run -d --name warehouse-detective-app --network waredetective-net -p 3000
 
 ```bash
 # 停止所有容器
-docker stop warehouse-detective-app playwright-service browser-service
+docker stop warehouse playwright-service browser-service
 
 # 删除所有容器
-docker rm warehouse-detective-app playwright-service browser-service
+docker rm warehouse playwright-service browser-service
 
 # 删除网络
 docker network rm waredetective-net
