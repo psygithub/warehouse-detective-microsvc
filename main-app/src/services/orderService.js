@@ -8,9 +8,36 @@ const inventoryService = require('./inventoryService');
 
 async function getXizhiyueOrderList(token, page = 1, pageSize = 20) {
     const url = `https://api.westmonth.com/erp/order/list`;
+
+    const now = new Date();
+    const endDate = new Date(now);
+    endDate.setHours(23, 59, 59, 999);
+    
+    const startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - 30);
+    startDate.setHours(0, 0, 0, 0);
+
+    const formatDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    };
+
     const body = {
         page: page,
-        size: pageSize
+        size: pageSize,
+        order_status: "",
+        time_field: "place_order_time",
+        time_start: formatDate(startDate),
+        time_end: formatDate(endDate),
+        ordersort: "desc",
+        search_field: "global_order_no",
+        search_value: "",
+        limit: pageSize
     };
 
     let lastError = null;
